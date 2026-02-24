@@ -1,21 +1,13 @@
 # Publication-quality CONSORT flowcharts from a consortr tracker tibble.
-#
-# Layout:
-#   - Vertical arrows connect bottom of box i to top of box i+1
-#   - Exclusion branches T-junction off the vertical flow line
-#   - Box heights/widths are content-driven, tight to text
-#   - No overlapping text layers
-#   - Exclusion boxes always shown (with n = 0) unless all groups are NA
 
 #' Draw a publication-quality CONSORT flowchart
 #'
 #' @param tracker A `cohort` object or a tracker tibble with columns `group`,
 #'   `step`, `n_remaining`, `n_dropped`.
-#' @param na_action How to label a group whose count is unchanged between
-#'   consecutive steps. `"not_applicable"` (default) writes "not applicable";
-#'   `"show"` displays the unchanged count normally.
-#' @param na_groups Character vector of group names to which `na_action`
-#'   applies. `NULL` (default) applies to all groups.
+#' @param na_cells A data frame with columns `step` and `group` identifying
+#'   step-group combinations where the step did not apply. These cells show
+#'   "N/A" in the exclusion box; counts in the main boxes are always shown.
+#'   `NULL` (default) means no N/A cells.
 #' @param step_labels Named character vector renaming steps for display.
 #' @param group_labels Named character vector renaming groups for display.
 #' @param font_size Multiplicative scaling factor for all text. Default `1`.
@@ -25,8 +17,7 @@
 #' @return A `ggplot2` object.
 #' @export
 consort_plot <- function(tracker,
-                         na_action = c("not_applicable", "show"),
-                         na_groups = NULL,
+                         na_cells = NULL,
                          step_labels = NULL,
                          group_labels = NULL,
                          font_size = 1,
@@ -35,26 +26,15 @@ consort_plot <- function(tracker,
 
   if (inherits(tracker, "cohort")) tracker <- get_tracker(tracker)
   validate_tracker(tracker)
-  na_action <- match.arg(na_action)
-  tracker   <- recode_tracker(tracker, step_labels, group_labels)
+  tracker <- recode_tracker(tracker, step_labels, group_labels)
 
   steps    <- unique(tracker$step)
   n_steps  <- length(steps)
   groups   <- unique(tracker$group)
   n_groups <- length(groups)
 
-  # is_na: display-only flag for main boxes
-
-  na_target <- if (is.null(na_groups)) groups else na_groups
-  tracker <- tracker |>
-    dplyr::group_by(.data$group) |>
-    dplyr::mutate(
-      is_na = na_action == "not_applicable" &
-        .data$group %in% na_target &
-        !is.na(dplyr::lag(.data$n_remaining)) &
-        .data$n_remaining == dplyr::lag(.data$n_remaining)
-    ) |>
-    dplyr::ungroup()
+  # Validate and attach NA flags
+  tracker <- flag_na_cells(tracker, na_cells)
 
   lay <- layout_params(font_size)
 
@@ -76,7 +56,8 @@ consort_plot <- function(tracker,
   lx_main  <- x0     - bw / 2 + lay$pad_x
   lx_excl  <- x_excl - ew / 2 + lay$pad_x
 
-  # --- Assemble plot --------------------------------------------------------
+  col_line <- "grey50"
+
   p <- ggplot2::ggplot()
 
   # Main boxes
@@ -84,7 +65,7 @@ consort_plot <- function(tracker,
     data = main, ggplot2::aes(
       xmin = x0 - bw / 2, xmax = x0 + bw / 2,
       ymin = .data$y - .data$bh / 2, ymax = .data$y + .data$bh / 2
-    ), fill = "white", colour = "grey20", linewidth = 0.4)
+    ), fill = NA, colour = col_line, linewidth = 0.4)
 
   # Vertical arrows
   if (n_steps > 1) {
@@ -97,7 +78,7 @@ consort_plot <- function(tracker,
         x = x0, xend = x0, y = .data$y_from, yend = .data$y_to
       ),
       arrow = ggplot2::arrow(length = ggplot2::unit(1.5, "mm"), type = "closed"),
-      colour = "grey20", linewidth = 0.4)
+      colour = col_line, linewidth = 0.4)
   }
 
   # Exclusion boxes + horizontal connectors
@@ -108,13 +89,13 @@ consort_plot <- function(tracker,
         data = excl, ggplot2::aes(
           xmin = el, xmax = x_excl + ew / 2,
           ymin = .data$y - .data$bh / 2, ymax = .data$y + .data$bh / 2
-        ), fill = "white", colour = "grey20", linewidth = 0.35) +
+        ), fill = NA, colour = col_line, linewidth = 0.35) +
       ggplot2::geom_segment(
         data = excl, ggplot2::aes(
           x = x0, xend = el, y = .data$y, yend = .data$y
         ),
         arrow = ggplot2::arrow(length = ggplot2::unit(1.3, "mm"), type = "closed"),
-        colour = "grey20", linewidth = 0.35)
+        colour = col_line, linewidth = 0.35)
   }
 
   # Text labels
@@ -148,7 +129,7 @@ consort_plot <- function(tracker,
     ggplot2::theme_void() +
     ggplot2::theme(
       plot.margin     = ggplot2::margin(2, 2, 2, 2),
-      plot.background = ggplot2::element_rect(fill = "white", colour = NA)
+      plot.background = ggplot2::element_rect(fill = NA, colour = NA)
     ) -> p
 
   attr(p, ".layout") <- list(x = c(xl, xr), y = c(yb, yt), m = m)
@@ -165,14 +146,15 @@ consort_plot <- function(tracker,
 #' @return `plot`, invisibly.
 #' @export
 save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
-                              scale = 0.55, dpi = 300) {
+                              scale = 0.75, dpi = 300) {
   ly <- attr(plot, ".layout")
   if (is.null(ly)) stop("No layout metadata.")
   w <- (diff(ly$x) + 2 * ly$m) * scale
   h <- (diff(ly$y) + 2 * ly$m) * scale
   for (fmt in formats) {
     f <- paste0(path, ".", fmt)
-    args <- list(filename = f, plot = plot, width = w, height = h, bg = "transparent")
+    args <- list(filename = f, plot = plot, width = w, height = h,
+                 bg = "transparent")
     if (fmt == "pdf") args$device <- grDevices::cairo_pdf
     if (fmt == "png") args$dpi    <- dpi
     do.call(ggplot2::ggsave, args)
@@ -188,14 +170,14 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
 
 layout_params <- function(fs) {
   list(
-    fs_title       = 2.6 * fs,
-    fs_body        = 2.4 * fs,
-    line_h         = 0.22 * fs,
-    pad_x          = 0.06,
-    pad_y          = 0.05,
-    gap            = 0.35,
-    h_gap          = 0.20,
-    chars_per_unit = 24 / fs
+    fs_title       = 2.7 * fs,
+    fs_body        = 2.5 * fs,
+    line_h         = 0.24 * fs,
+    pad_x          = 0.08,
+    pad_y          = 0.06,
+    gap            = 0.38,
+    h_gap          = 0.22,
+    chars_per_unit = 15 / fs
   )
 }
 
@@ -203,9 +185,34 @@ layout_params <- function(fs) {
 
 
 # =========================================================================
+# NA cell flagging — explicit only
+# =========================================================================
+
+flag_na_cells <- function(tracker, na_cells) {
+  if (is.null(na_cells)) {
+    tracker$is_na <- FALSE
+    return(tracker)
+  }
+  if (!is.data.frame(na_cells))
+    stop("na_cells must be NULL or a data frame with 'step' and 'group' columns.")
+  if (!all(c("step", "group") %in% colnames(na_cells)))
+    stop("na_cells data frame must have 'step' and 'group' columns.")
+
+  na_cells$.na_flag <- TRUE
+  tracker <- dplyr::left_join(tracker,
+                              dplyr::select(na_cells, "step", "group", ".na_flag"),
+                              by = c("step", "group"))
+  tracker$is_na <- tidyr::replace_na(tracker$.na_flag, FALSE)
+  tracker$.na_flag <- NULL
+  tracker
+}
+
+
+# =========================================================================
 # Content builders
 # =========================================================================
 
+#' Main boxes always show counts for all groups — no N/A here.
 build_main_content <- function(tracker, steps, n_groups) {
   purrr::map(steps, function(s) {
     rows  <- dplyr::filter(tracker, .data$step == s)
@@ -219,7 +226,6 @@ build_main_content <- function(tracker, steps, n_groups) {
     group_lines <- if (n_groups > 1) {
       rows |>
         dplyr::mutate(line = dplyr::case_when(
-          .data$is_na              ~ paste0(.data$group, ": not applicable"),
           is.na(.data$n_remaining) ~ paste0(.data$group, ": \u2014"),
           TRUE ~ paste0(.data$group, ": n = ",
                         format(.data$n_remaining, big.mark = ","))
@@ -232,43 +238,44 @@ build_main_content <- function(tracker, steps, n_groups) {
   })
 }
 
-#' Exclusion boxes: always shown (even n = 0) unless ALL groups at that
-#' transition are flagged is_na. Groups with is_na are omitted from the
-#' per-group breakdown; groups with d = 0 show "n = 0".
+#' Exclusion boxes: groups flagged is_na show "N/A"; others show drop count.
+#' Box is shown at every transition (even if all drops are 0).
 build_excl_content <- function(tracker, steps, n_steps, n_groups) {
   if (n_steps < 2) return(list())
-  purrr::compact(purrr::map(seq(2, n_steps), function(i) {
+  purrr::map(seq(2, n_steps), function(i) {
     prev <- dplyr::filter(tracker, .data$step == steps[i - 1])
     curr <- dplyr::filter(tracker, .data$step == steps[i])
 
     joined <- dplyr::left_join(
-      dplyr::select(prev, "group", prev_n = "n_remaining", prev_na = "is_na"),
-      dplyr::select(curr, "group", curr_n = "n_remaining", curr_na = "is_na"),
+      dplyr::select(prev, "group", prev_n = "n_remaining"),
+      dplyr::select(curr, "group", curr_n = "n_remaining", "is_na"),
       by = "group"
     ) |>
       dplyr::mutate(
         d = tidyr::replace_na(.data$prev_n, 0L) -
-          tidyr::replace_na(.data$curr_n, 0L),
-        # A group is NA at this transition if it's flagged NA in the current step
-        is_na = tidyr::replace_na(.data$curr_na, FALSE)
+          tidyr::replace_na(.data$curr_n, 0L)
       )
 
-    # Keep only non-NA groups for this exclusion box
+    # Total excludes NA groups
     applicable <- dplyr::filter(joined, !.data$is_na)
+    total_d <- sum(applicable$d, na.rm = TRUE)
 
-    # If all groups are NA at this step, skip the exclusion box entirely
-    if (nrow(applicable) == 0) return(NULL)
+    title <- paste0("Excluded (n = ", format(total_d, big.mark = ","), ")")
 
-    total_d <- sum(applicable$d)
-    title   <- paste0("Excluded (n = ", format(total_d, big.mark = ","), ")")
     group_lines <- if (n_groups > 1) {
-      paste0("  ", applicable$group, ": n = ",
-             format(applicable$d, big.mark = ","))
+      joined |>
+        dplyr::mutate(line = dplyr::if_else(
+          .data$is_na,
+          paste0("  ", .data$group, ": N/A"),
+          paste0("  ", .data$group, ": n = ",
+                 format(.data$d, big.mark = ","))
+        )) |>
+        dplyr::pull(.data$line)
     } else character(0)
 
     list(title = title, n_line = NULL, group_lines = group_lines,
          raw_lines = c(title, group_lines), type = "excl", step_idx = i)
-  }))
+  })
 }
 
 
@@ -280,14 +287,14 @@ auto_width <- function(content_list, cpu, pad_x) {
   if (length(content_list) == 0) return(1)
   max_ch <- max(purrr::map_int(content_list, function(x)
     max(nchar(x$raw_lines), na.rm = TRUE)))
-  w <- max_ch / cpu + 2 * pad_x + 0.05
-  max(min(w, 5), 0.8)
+  w <- max_ch / cpu + 2 * pad_x + 0.12
+  max(min(w, 5.5), 0.8)
 }
 
 wrap_and_measure <- function(content_list, box_w, lay) {
   wc <- floor((box_w - 2 * lay$pad_x) * lay$chars_per_unit)
   purrr::map(content_list, function(item) {
-    item$title_wrapped <- stringr::str_wrap(item$title, width = wc)
+    item$title_wrapped <- stringr::str_wrap(item$title, width = max(wc, 10))
     nt <- count_lines(item$title_wrapped)
     nn <- if (!is.null(item$n_line)) 1L else 0L
     ng <- length(item$group_lines)
@@ -376,19 +383,19 @@ validate_tracker <- function(tracker) {
 }
 
 recode_tracker <- function(tracker, step_labels, group_labels) {
+  recode_vec <- function(x, lookup) {
+    idx <- match(x, names(lookup))
+    ifelse(is.na(idx), x, unname(lookup[idx]))
+  }
   if (!is.null(step_labels)) {
     bad <- setdiff(names(step_labels), tracker$step)
     if (length(bad)) warning("step_labels not in tracker: ", paste(bad, collapse = ", "))
-    tracker$step <- dplyr::case_match(
-      tracker$step, !!!setNames(names(step_labels), step_labels),
-      .default = tracker$step)
+    tracker$step <- recode_vec(tracker$step, step_labels)
   }
   if (!is.null(group_labels)) {
     bad <- setdiff(names(group_labels), tracker$group)
     if (length(bad)) warning("group_labels not in tracker: ", paste(bad, collapse = ", "))
-    tracker$group <- dplyr::case_match(
-      tracker$group, !!!setNames(names(group_labels), group_labels),
-      .default = tracker$group)
+    tracker$group <- recode_vec(tracker$group, group_labels)
   }
   tracker
 }
