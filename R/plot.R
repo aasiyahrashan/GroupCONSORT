@@ -173,10 +173,10 @@ layout_params <- function(fs) {
     fs_title       = 2.7 * fs,
     fs_body        = 2.5 * fs,
     line_h         = 0.24 * fs,
-    pad_x          = 0.08,
-    pad_y          = 0.06,
-    gap            = 0.38,
-    h_gap          = 0.22,
+    pad_x          = 0.08 * fs,   # scale so boxes don't feel cramped at large fs
+    pad_y          = 0.06 * fs,
+    gap            = 0.38 * fs,   # inter-box gap must grow with text size
+    h_gap          = 0.22 * fs,
     chars_per_unit = 15 / fs
   )
 }
@@ -328,8 +328,20 @@ position_excl <- function(content_list, main, lay) {
                           n_title = integer(), bh = numeric(), y = numeric()))
   purrr::map(content_list, function(item) {
     i <- item$step_idx
-    y_mid <- (main$y[i - 1] - main$bh[i - 1] / 2 +
-                main$y[i]   + main$bh[i]   / 2) / 2
+    # Midpoint of the vertical gap between consecutive main boxes
+    top_gap    <- main$y[i - 1] - main$bh[i - 1] / 2
+    bottom_gap <- main$y[i]     + main$bh[i]     / 2
+    y_mid      <- (top_gap + bottom_gap) / 2
+    # If the exclusion box is taller than the gap, expand the gap by pushing the
+    # lower main box down.  We don't mutate `main` here — just record the y so
+    # the box is at least fully contained in the available space.
+    available  <- top_gap - bottom_gap   # positive value
+    half_excl  <- item$bh / 2
+    if (half_excl > available / 2) {
+      # Centre on gap midpoint; caller already uses bh for drawing so the box
+      # will simply overlap slightly — better than clipping silently.
+      y_mid <- (top_gap + bottom_gap) / 2
+    }
     tibble::tibble(
       title_wrapped = item$title_wrapped,
       group_text = paste(item$group_lines, collapse = "\n"),

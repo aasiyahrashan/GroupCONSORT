@@ -21,7 +21,8 @@ Apply an inclusion filter and record the attrition step
 }
 \examples{
 cgd <- prep_cgd_example()
-cohort <- new_cohort(cgd, label = "Randomised", id_col = "id", group_col = "region") |>
+cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
+                     group_col = "region") |>
   include_if(age >= 5, "Age >= 5 years") |>
   include_if(steroids == 0, "Not on corticosteroids")
 

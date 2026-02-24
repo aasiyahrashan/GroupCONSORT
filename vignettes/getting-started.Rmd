@@ -1,0 +1,145 @@
+---
+title: "Getting started with GroupCONSORT"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with GroupCONSORT}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(GroupCONSORT)
+library(dplyr)
+```
+
+GroupCONSORT tracks patient attrition through inclusion/exclusion steps and
+produces publication-quality CONSORT flowcharts, with optional per-group
+(site / country) breakdowns. The API is a simple pipe chain — each
+`include_if()` call filters the data and records what was dropped.
+
+## Data
+
+We use `survival::cgd`, a real placebo-controlled trial that ships with every
+R installation. `prep_cgd_example()` reduces it to one row per patient and
+adds a `region` column (North America / Europe).
+
+```{r data}
+cgd <- prep_cgd_example()
+glimpse(cgd)
+```
+
+## Building a cohort
+
+Start with `new_cohort()`, then pipe `include_if()` calls. The condition is
+any ordinary dplyr filter expression.
+
+```{r cohort}
+cohort <- cgd |>
+  new_cohort(label = "Randomised", id_col = "id", group_col = "region") |>
+  include_if(age >= 5,           "Age >= 5 years") |>
+  include_if(weight >= 15,       "Weight >= 15 kg") |>
+  include_if(steroids == 0,      "Not on corticosteroids") |>
+  include_if(follow_up_days > 0, "Positive follow-up time")
+
+cohort
+```
+
+`get_tracker()` returns the underlying tibble — one row per group × step,
+recording how many patients remain and how many were dropped.
+
+```{r tracker}
+get_tracker(cohort)
+```
+
+`get_data()` returns the filtered data frame ready for analysis.
+
+```{r nrow}
+nrow(get_data(cohort))
+```
+
+## Drawing the flowchart
+
+`consort_plot()` accepts a cohort object and returns a ggplot2 object.
+
+```{r plot, fig.width = 9, fig.height = 7, fig.alt = "CONSORT flowchart showing attrition through four eligibility steps, with North America and Europe shown separately."}
+consort_plot(cohort)
+```
+
+## Relabelling for publication
+
+Rename steps and groups for display without touching the tracker. Only the
+labels you want to change need to be listed.
+
+```{r relabel, fig.width = 9, fig.height = 7, fig.alt = "CONSORT flowchart with relabelled steps and groups."}
+consort_plot(
+  cohort,
+  step_labels  = c("Not on corticosteroids" = "No concurrent corticosteroid use"),
+  group_labels = c("North America" = "N. America")
+)
+```
+
+## N/A cells for multi-source studies
+
+When combining data from multiple sources, some steps may not apply to all
+groups. Pass a data frame with `step` and `group` columns to `na_cells` —
+those exclusion boxes show "N/A" while the main count boxes always show
+totals.
+
+```{r na-cells, fig.width = 9, fig.height = 7, fig.alt = "CONSORT flowchart with N/A in the exclusion box for North America at the weight step."}
+cohort_multi <- cgd |>
+  new_cohort("Randomised", id_col = "id", group_col = "region") |>
+  include_if(age >= 5,                                  "Age >= 5 years") |>
+  include_if(weight >= 15 | region == "North America",  "Weight >= 15 kg") |>
+  include_if(steroids == 0,                             "Not on corticosteroids") |>
+  include_if(follow_up_days > 0,                        "Positive follow-up time")
+
+consort_plot(
+  cohort_multi,
+  na_cells = data.frame(step = "Weight >= 15 kg", group = "North America")
+)
+```
+
+## Single-group studies
+
+Set `group_col = NULL` for studies without a meaningful site grouping.
+
+```{r single, fig.width = 6, fig.height = 7, fig.alt = "CONSORT flowchart with no per-group breakdown."}
+cgd |>
+  new_cohort("Randomised", id_col = "id", group_col = NULL) |>
+  include_if(age >= 5,           "Age >= 5 years") |>
+  include_if(weight >= 15,       "Weight >= 15 kg") |>
+  include_if(steroids == 0,      "Not on corticosteroids") |>
+  include_if(follow_up_days > 0, "Positive follow-up time") |>
+  consort_plot()
+```
+
+## Pre-filtering outside the pipeline
+
+Complex criteria can be computed separately and joined back in before piping.
+
+```{r prefilter}
+xlinked_ids <- cgd |> filter(inherit == "X-linked") |> pull(id)
+
+cgd |>
+  new_cohort("Randomised", id_col = "id", group_col = "region") |>
+  include_if(id %in% xlinked_ids, "X-linked inheritance") |>
+  include_if(steroids == 0,       "Not on corticosteroids") |>
+  get_tracker()
+```
+
+## Saving
+
+`save_consort_plot()` calculates figure dimensions from the plot content, so
+text and boxes stay consistently sized regardless of how many steps or groups
+there are. Figures are saved with a transparent background.
+
+```{r save, eval = FALSE}
+p <- consort_plot(cohort)
+save_consort_plot(p, "consort_flowchart", formats = c("png", "pdf"))
+```
+
+The `scale` argument (default `0.75`) controls conversion from internal plot
+units to inches — increase it to produce a physically larger figure without
+changing layout proportions. The `font_size` argument to `consort_plot()`
+scales all text and box dimensions together.

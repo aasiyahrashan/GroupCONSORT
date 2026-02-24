@@ -81,7 +81,26 @@ get_data <- function(cohort) cohort$data
 #' @export
 get_tracker <- function(cohort) cohort$tracker
 
-# Internal helpers ---------------------------------------------------------
+#' Print method for cohort objects
+#' @param x A `cohort` object.
+#' @param ... Ignored.
+#' @export
+print.cohort <- function(x, ...) {
+  tr     <- x$tracker
+  steps  <- unique(tr$step)
+  groups <- setdiff(unique(tr$group), "All")
+  n_start <- sum(dplyr::filter(tr, .data$step == steps[1])$n_remaining)
+  n_end   <- sum(dplyr::filter(tr, .data$step == steps[length(steps)])$n_remaining)
+  cat(sprintf(
+    "<cohort>  %d step%s | %d group%s\n  Start: n = %s  |  End: n = %s\n",
+    length(steps),  if (length(steps)  != 1) "s" else "",
+    max(length(groups), 1), if (max(length(groups), 1) != 1) "s" else "",
+    format(n_start, big.mark = ","),
+    format(n_end,   big.mark = ",")
+  ))
+  invisible(x)
+}
+
 
 check_cohort <- function(x) {
   if (!inherits(x, "cohort")) stop("Expected a cohort object from new_cohort().")

@@ -15,10 +15,3 @@ The filtered data frame at the current stage.
 \description{
 Extract the data frame from a cohort object
 }
-\examples{
-cgd <- prep_cgd_example()
-cohort <- new_cohort(cgd, label = "Randomised", id_col = "id") |>
-  include_if(age >= 5, "Age >= 5 years")
-get_data(cohort)
-
-}

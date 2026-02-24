@@ -8,7 +8,7 @@ save_consort_plot(
   plot,
   path,
   formats = c("png", "pdf"),
-  scale = 0.64,
+  scale = 0.75,
   dpi = 300
 )
 }
@@ -17,23 +17,15 @@ save_consort_plot(
 
 \item{path}{Output path without extension.}
 
-\item{formats}{Any combination of \code{"png"} and \code{"pdf"}. Default: both.}
+\item{formats}{\code{"png"}, \code{"pdf"}, or both.}
 
-\item{scale}{Inches per plot unit. Default \code{0.64}.}
+\item{scale}{Inches per plot unit.}
 
-\item{dpi}{PNG resolution. Default \code{300}.}
+\item{dpi}{PNG resolution.}
 }
 \value{
 \code{plot}, invisibly.
 }
 \description{
-Figure width and height are computed from the plot content so that text and
-boxes remain consistently sized regardless of the number of steps.
-}
-\examples{
-\dontrun{
-p <- consort_plot(cohort)
-save_consort_plot(p, "output/consort")
-}
-
+Save a CONSORT flowchart at content-fitting dimensions
 }

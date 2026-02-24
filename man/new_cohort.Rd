@@ -30,6 +30,7 @@ Create a cohort object and initialise the attrition tracker
 }
 \examples{
 cgd <- prep_cgd_example()
-cohort <- new_cohort(cgd, label = "Randomised", id_col = "id", group_col = "region")
+cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
+                     group_col = "region")
 
 }

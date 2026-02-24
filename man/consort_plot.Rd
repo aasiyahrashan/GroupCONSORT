@@ -6,57 +6,36 @@
 \usage{
 consort_plot(
   tracker,
-  na_action = c("not_applicable", "show"),
-  na_groups = NULL,
+  na_cells = NULL,
   step_labels = NULL,
   group_labels = NULL,
-  palette = c("mono", "blue", "warm"),
   font_size = 1,
-  box_width = 6.5,
-  excl_width = 4.8
+  box_width = NULL,
+  excl_width = NULL
 )
 }
 \arguments{
 \item{tracker}{A \code{cohort} object or a tracker tibble with columns \code{group},
 \code{step}, \code{n_remaining}, \code{n_dropped}.}
 
-\item{na_action}{How to label a group whose count is unchanged between
-consecutive steps. \code{"not_applicable"} (default) writes "not applicable";
-\code{"show"} displays the unchanged count normally.}
+\item{na_cells}{A data frame with columns \code{step} and \code{group} identifying
+step-group combinations where the step did not apply. These cells show
+"N/A" in the exclusion box; counts in the main boxes are always shown.
+\code{NULL} (default) means no N/A cells.}
 
-\item{na_groups}{Character vector of group names to which \code{na_action}
-applies. \code{NULL} (default) applies to all groups.}
+\item{step_labels}{Named character vector renaming steps for display.}
 
-\item{step_labels}{Named character vector renaming steps for display, e.g.
-\code{c("Ventilated" = "Invasive mechanical ventilation")}.}
-
-\item{group_labels}{Named character vector renaming groups for display, e.g.
-\code{c("United.Kingdom" = "United Kingdom")}.}
-
-\item{palette}{One of \code{"mono"} (default), \code{"blue"}, or \code{"warm"}, or a named
-list overriding any of: \code{box_fill}, \code{box_border}, \code{title_fill},
-\code{excl_fill}, \code{excl_border}, \code{arrow_col}, \code{title_col}, \code{text_col}.}
+\item{group_labels}{Named character vector renaming groups for display.}
 
 \item{font_size}{Multiplicative scaling factor for all text. Default \code{1}.}
 
-\item{box_width}{Width of main flow boxes in plot units. Default \code{6.5}.}
+\item{box_width}{Width of main boxes in plot units. \code{NULL} = auto.}
 
-\item{excl_width}{Width of exclusion boxes in plot units. Default \code{4.8}.}
+\item{excl_width}{Width of exclusion boxes in plot units. \code{NULL} = auto.}
 }
 \value{
-A \code{ggplot2} object. Pass to \code{\link[=save_consort_plot]{save_consort_plot()}} to save at
-content-fitting dimensions.
+A \code{ggplot2} object.
 }
 \description{
 Draw a publication-quality CONSORT flowchart
-}
-\examples{
-cgd <- prep_cgd_example()
-cohort <- new_cohort(cgd, label = "Randomised", id_col = "id", group_col = "region") |>
-  include_if(age >= 5, "Age >= 5 years") |>
-  include_if(steroids == 0, "Not on corticosteroids")
-
-consort_plot(cohort)
-consort_plot(cohort, palette = "blue")
-
 }
