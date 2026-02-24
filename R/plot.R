@@ -48,7 +48,8 @@ consort_plot <- function(tracker,
   mc <- wrap_and_measure(mc, bw, lay)
   ec <- wrap_and_measure(ec, ew, lay)
 
-  main <- position_main(mc, lay)
+  excl_bh <- purrr::map_dbl(ec, "bh")
+  main <- position_main(mc, lay, excl_bh)
   excl <- position_excl(ec, main, lay)
 
   x0       <- 0
@@ -56,7 +57,7 @@ consort_plot <- function(tracker,
   lx_main  <- x0     - bw / 2 + lay$pad_x
   lx_excl  <- x_excl - ew / 2 + lay$pad_x
 
-  col_line <- "grey50"
+  col_line <- "grey20"
 
   p <- ggplot2::ggplot()
 
@@ -170,14 +171,15 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
 
 layout_params <- function(fs) {
   list(
-    fs_title       = 2.7 * fs,
+    fs_title       = 2.5 * fs,
     fs_body        = 2.5 * fs,
-    line_h         = 0.24 * fs,
-    pad_x          = 0.08 * fs,   # scale so boxes don't feel cramped at large fs
-    pad_y          = 0.06 * fs,
-    gap            = 0.38 * fs,   # inter-box gap must grow with text size
-    h_gap          = 0.22 * fs,
-    chars_per_unit = 15 / fs
+    line_h         = 0.18 * fs,
+    section_gap    = 0.05 * fs,   # extra space between title block and n_line
+    pad_x          = 0.08,
+    pad_y          = 0.08,
+    gap            = 0.22,
+    h_gap          = 0.22,
+    chars_per_unit = 12 / fs
   )
 }
 
@@ -287,8 +289,8 @@ auto_width <- function(content_list, cpu, pad_x) {
   if (length(content_list) == 0) return(1)
   max_ch <- max(purrr::map_int(content_list, function(x)
     max(nchar(x$raw_lines), na.rm = TRUE)))
-  w <- max_ch / cpu + 2 * pad_x + 0.12
-  max(min(w, 5.5), 0.8)
+  w <- max_ch / cpu + 2 * pad_x + 0.08
+  max(min(w, 4.5), 0.8)
 }
 
 wrap_and_measure <- function(content_list, box_w, lay) {
@@ -300,18 +302,23 @@ wrap_and_measure <- function(content_list, box_w, lay) {
     ng <- length(item$group_lines)
     item$n_title <- nt
     total_lines <- nt + nn + ng
-    # N lines need (N-1) inter-line gaps + top/bottom padding + last-line cap
-    item$bh <- (total_lines - 1) * lay$line_h + lay$line_h * 0.6 + 2 * lay$pad_y
+    sg <- if (nn > 0 || ng > 0) lay$section_gap else 0
+    item$bh <- total_lines * lay$line_h + sg + 2 * lay$pad_y
     item
   })
 }
 
-position_main <- function(content_list, lay) {
+position_main <- function(content_list, lay, excl_bh = NULL) {
   n  <- length(content_list)
   bh <- purrr::map_dbl(content_list, "bh")
   y  <- numeric(n)
-  for (i in seq_along(content_list)[-1])
-    y[i] <- y[i - 1] - bh[i - 1] / 2 - lay$gap - bh[i] / 2
+  for (i in seq_along(content_list)[-1]) {
+    min_gap <- if (!is.null(excl_bh) && (i - 1) <= length(excl_bh))
+      max(lay$gap, excl_bh[i - 1] + lay$gap * 0.4)
+    else
+      lay$gap
+    y[i] <- y[i - 1] - bh[i - 1] / 2 - min_gap - bh[i] / 2
+  }
   tibble::tibble(
     title_wrapped = purrr::map_chr(content_list, "title_wrapped"),
     n_line  = purrr::map_chr(content_list, function(x) x$n_line %||% ""),
@@ -327,21 +334,10 @@ position_excl <- function(content_list, main, lay) {
     return(tibble::tibble(title_wrapped = character(), group_text = character(),
                           n_title = integer(), bh = numeric(), y = numeric()))
   purrr::map(content_list, function(item) {
-    i <- item$step_idx
-    # Midpoint of the vertical gap between consecutive main boxes
+    i      <- item$step_idx
     top_gap    <- main$y[i - 1] - main$bh[i - 1] / 2
     bottom_gap <- main$y[i]     + main$bh[i]     / 2
-    y_mid      <- (top_gap + bottom_gap) / 2
-    # If the exclusion box is taller than the gap, expand the gap by pushing the
-    # lower main box down.  We don't mutate `main` here — just record the y so
-    # the box is at least fully contained in the available space.
-    available  <- top_gap - bottom_gap   # positive value
-    half_excl  <- item$bh / 2
-    if (half_excl > available / 2) {
-      # Centre on gap midpoint; caller already uses bh for drawing so the box
-      # will simply overlap slightly — better than clipping silently.
-      y_mid <- (top_gap + bottom_gap) / 2
-    }
+    y_mid  <- (top_gap + bottom_gap) / 2
     tibble::tibble(
       title_wrapped = item$title_wrapped,
       group_text = paste(item$group_lines, collapse = "\n"),
@@ -364,11 +360,11 @@ build_labels <- function(main, excl, lx_main, lx_excl, lay, n_groups) {
                                      TRUE, lay$fs_title)
     if (nchar(main$n_line[i]) > 0)
       rows[[length(rows) + 1L]] <- lbl(
-        lx_main, top - main$n_title[i] * lay$line_h,
+        lx_main, top - main$n_title[i] * lay$line_h - lay$section_gap,
         main$n_line[i], n_bold, lay$fs_body)
     if (nchar(main$group_text[i]) > 0)
       rows[[length(rows) + 1L]] <- lbl(
-        lx_main, top - (main$n_title[i] + 1L) * lay$line_h,
+        lx_main, top - (main$n_title[i] + 1L) * lay$line_h - lay$section_gap,
         main$group_text[i], FALSE, lay$fs_body)
   }
   for (i in seq_len(nrow(excl))) {

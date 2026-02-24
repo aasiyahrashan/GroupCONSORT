@@ -8,7 +8,7 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", dpi = 150)
 library(GroupCONSORT)
 library(dplyr)
 ```
@@ -60,10 +60,15 @@ nrow(get_data(cohort))
 
 ## Drawing the flowchart
 
-`consort_plot()` accepts a cohort object and returns a ggplot2 object.
+`consort_plot()` returns a ggplot2 object. Use `save_consort_plot()` to write
+it to disk at content-fitted dimensions, then display it with
+`knitr::include_graphics()`. This pattern ensures the figure is never
+stretched or compressed by knitr's default sizing.
 
-```{r plot, fig.width = 9, fig.height = 7, fig.alt = "CONSORT flowchart showing attrition through four eligibility steps, with North America and Europe shown separately."}
-consort_plot(cohort)
+```{r plot, fig.alt = "CONSORT flowchart showing attrition through four eligibility steps, with North America and Europe shown separately."}
+p <- consort_plot(cohort)
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
 ```
 
 ## Relabelling for publication
@@ -71,12 +76,14 @@ consort_plot(cohort)
 Rename steps and groups for display without touching the tracker. Only the
 labels you want to change need to be listed.
 
-```{r relabel, fig.width = 9, fig.height = 7, fig.alt = "CONSORT flowchart with relabelled steps and groups."}
-consort_plot(
+```{r relabel, fig.alt = "CONSORT flowchart with relabelled steps and groups."}
+p <- consort_plot(
   cohort,
   step_labels  = c("Not on corticosteroids" = "No concurrent corticosteroid use"),
   group_labels = c("North America" = "N. America")
 )
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
 ```
 
 ## N/A cells for multi-source studies
@@ -86,7 +93,7 @@ groups. Pass a data frame with `step` and `group` columns to `na_cells` —
 those exclusion boxes show "N/A" while the main count boxes always show
 totals.
 
-```{r na-cells, fig.width = 9, fig.height = 7, fig.alt = "CONSORT flowchart with N/A in the exclusion box for North America at the weight step."}
+```{r na-cells, fig.alt = "CONSORT flowchart with N/A in the exclusion box for North America at the weight step."}
 cohort_multi <- cgd |>
   new_cohort("Randomised", id_col = "id", group_col = "region") |>
   include_if(age >= 5,                                  "Age >= 5 years") |>
@@ -94,24 +101,28 @@ cohort_multi <- cgd |>
   include_if(steroids == 0,                             "Not on corticosteroids") |>
   include_if(follow_up_days > 0,                        "Positive follow-up time")
 
-consort_plot(
+p <- consort_plot(
   cohort_multi,
   na_cells = data.frame(step = "Weight >= 15 kg", group = "North America")
 )
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
 ```
 
 ## Single-group studies
 
 Set `group_col = NULL` for studies without a meaningful site grouping.
 
-```{r single, fig.width = 6, fig.height = 7, fig.alt = "CONSORT flowchart with no per-group breakdown."}
-cgd |>
+```{r single, fig.alt = "CONSORT flowchart with no per-group breakdown."}
+p <- cgd |>
   new_cohort("Randomised", id_col = "id", group_col = NULL) |>
   include_if(age >= 5,           "Age >= 5 years") |>
   include_if(weight >= 15,       "Weight >= 15 kg") |>
   include_if(steroids == 0,      "Not on corticosteroids") |>
   include_if(follow_up_days > 0, "Positive follow-up time") |>
   consort_plot()
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
 ```
 
 ## Pre-filtering outside the pipeline
@@ -130,9 +141,9 @@ cgd |>
 
 ## Saving
 
-`save_consort_plot()` calculates figure dimensions from the plot content, so
-text and boxes stay consistently sized regardless of how many steps or groups
-there are. Figures are saved with a transparent background.
+The `save_consort_plot()` function computes figure dimensions from the plot
+content so text and boxes stay consistently sized regardless of how many steps
+or groups there are. Figures are saved with a transparent background.
 
 ```{r save, eval = FALSE}
 p <- consort_plot(cohort)
@@ -143,3 +154,69 @@ The `scale` argument (default `0.75`) controls conversion from internal plot
 units to inches — increase it to produce a physically larger figure without
 changing layout proportions. The `font_size` argument to `consort_plot()`
 scales all text and box dimensions together.
+
+## Layout stress tests
+
+These chunks verify the layout holds up under edge cases — many groups,
+many steps, long labels, and large font.
+
+```{r stress-setup, include = FALSE}
+set.seed(1)
+df_many <- data.frame(
+  id   = 1:120,
+  site = rep(paste("Site", LETTERS[1:6]), each = 20),
+  age  = sample(1:80, 120, replace = TRUE),
+  wt   = sample(c(10, 20), 120, replace = TRUE)
+)
+```
+
+```{r stress-many-groups, fig.alt = "Stress test: 6 groups, 2 steps."}
+p <- df_many |>
+  new_cohort("Screened", id_col = "id", group_col = "site") |>
+  include_if(age >= 18, "Age >= 18 years") |>
+  include_if(wt  >= 15, "Weight >= 15 kg") |>
+  consort_plot()
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
+```
+
+```{r stress-many-steps, fig.alt = "Stress test: 6 steps, 2 groups."}
+p <- df_many |>
+  dplyr::mutate(site = ifelse(site %in% c("Site A", "Site B", "Site C"),
+                              "North", "South")) |>
+  new_cohort("Screened", id_col = "id", group_col = "site") |>
+  include_if(age >= 18,  "Age >= 18 years") |>
+  include_if(age <= 75,  "Age <= 75 years") |>
+  include_if(wt  >= 15,  "Weight >= 15 kg") |>
+  include_if(wt  <= 100, "Weight <= 100 kg") |>
+  include_if(age >= 20,  "Age >= 20 years") |>
+  include_if(wt  >= 10,  "Weight >= 10 kg") |>
+  consort_plot()
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
+```
+
+```{r stress-long-labels, fig.alt = "Stress test: long step labels."}
+p <- df_many |>
+  dplyr::mutate(site = ifelse(site %in% c("Site A", "Site B", "Site C"),
+                              "Northern Region", "Southern Region")) |>
+  new_cohort("All screened participants at enrolment",
+             id_col = "id", group_col = "site") |>
+  include_if(age >= 18,
+    "Participants aged 18 years or older at time of screening visit") |>
+  include_if(wt >= 15,
+    "Body weight at least 15 kg as recorded at baseline assessment") |>
+  consort_plot()
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
+```
+
+```{r stress-large-font, fig.alt = "Stress test: font_size = 1.4."}
+p <- df_many |>
+  new_cohort("Screened", id_col = "id", group_col = "site") |>
+  include_if(age >= 18, "Age >= 18 years") |>
+  include_if(wt  >= 15, "Weight >= 15 kg") |>
+  consort_plot(font_size = 1.4)
+save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
+knitr::include_graphics(paste0(tmp, ".png"))
+```
