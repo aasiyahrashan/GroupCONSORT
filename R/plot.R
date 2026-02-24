@@ -99,7 +99,7 @@ consort_plot <- function(tracker,
   }
 
   # Text labels
-  labels <- build_labels(main, excl, lx_main, lx_excl, lay)
+  labels <- build_labels(main, excl, lx_main, lx_excl, lay, n_groups)
   bold_l  <- dplyr::filter(labels, .data$bold)
   plain_l <- dplyr::filter(labels, !.data$bold)
 
@@ -108,13 +108,13 @@ consort_plot <- function(tracker,
       data = bold_l,
       ggplot2::aes(x = .data$tx, y = .data$ty, label = .data$label),
       fontface = "bold", size = bold_l$fsize,
-      hjust = 0, vjust = 1, lineheight = 1.05, colour = "black")
+      hjust = 0, vjust = 1, lineheight = 1.05, colour = col_line)
   if (nrow(plain_l) > 0)
     p <- p + ggplot2::geom_text(
       data = plain_l,
       ggplot2::aes(x = .data$tx, y = .data$ty, label = .data$label),
       fontface = "plain", size = plain_l$fsize,
-      hjust = 0, vjust = 1, lineheight = 1.05, colour = "black")
+      hjust = 0, vjust = 1, lineheight = 1.05, colour = col_line)
 
   m  <- 0.06
   xl <- x0 - bw / 2
@@ -299,7 +299,9 @@ wrap_and_measure <- function(content_list, box_w, lay) {
     nn <- if (!is.null(item$n_line)) 1L else 0L
     ng <- length(item$group_lines)
     item$n_title <- nt
-    item$bh <- (nt + nn + ng) * lay$line_h + 2 * lay$pad_y
+    total_lines <- nt + nn + ng
+    # N lines need (N-1) inter-line gaps + top/bottom padding + last-line cap
+    item$bh <- (total_lines - 1) * lay$line_h + lay$line_h * 0.6 + 2 * lay$pad_y
     item
   })
 }
@@ -341,8 +343,9 @@ position_excl <- function(content_list, main, lay) {
 # Text labels
 # =========================================================================
 
-build_labels <- function(main, excl, lx_main, lx_excl, lay) {
+build_labels <- function(main, excl, lx_main, lx_excl, lay, n_groups) {
   rows <- list()
+  n_bold <- n_groups > 1  # only bold the n-line when there are groups below it
   for (i in seq_len(nrow(main))) {
     top <- main$y[i] + main$bh[i] / 2 - lay$pad_y
     rows[[length(rows) + 1L]] <- lbl(lx_main, top, main$title_wrapped[i],
@@ -350,7 +353,7 @@ build_labels <- function(main, excl, lx_main, lx_excl, lay) {
     if (nchar(main$n_line[i]) > 0)
       rows[[length(rows) + 1L]] <- lbl(
         lx_main, top - main$n_title[i] * lay$line_h,
-        main$n_line[i], TRUE, lay$fs_body)
+        main$n_line[i], n_bold, lay$fs_body)
     if (nchar(main$group_text[i]) > 0)
       rows[[length(rows) + 1L]] <- lbl(
         lx_main, top - (main$n_title[i] + 1L) * lay$line_h,
