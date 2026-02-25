@@ -13,6 +13,7 @@ packages it supports **multi-group studies** — flowcharts show per-group
 for steps that did not apply to a particular group.
 
 - Fair warning: Most of the code (and all of the documentation and tests) are AI written.
+- [Full documentation](https://aasiyahrashan.github.io/GroupCONSORT/)
 ---
 
 ## Installation
