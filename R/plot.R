@@ -175,7 +175,7 @@ layout_params <- function(fs) {
     fs_body        = 2.5 * fs,
     line_h         = 0.18 * fs,
     section_gap    = 0.05 * fs,   # extra space between title block and n_line
-    pad_x          = 0.08,
+    pad_x          = 0.06,
     pad_y          = 0.08,
     gap            = 0.22,
     h_gap          = 0.22,
@@ -262,7 +262,7 @@ build_excl_content <- function(tracker, steps, n_steps, n_groups) {
     applicable <- dplyr::filter(joined, !.data$is_na)
     total_d <- sum(applicable$d, na.rm = TRUE)
 
-    title <- paste0("Excluded (n = ", format(total_d, big.mark = ","), ")")
+    title <- paste0("Excluded: n = ", format(total_d, big.mark = ","))
 
     group_lines <- if (n_groups > 1) {
       joined |>
@@ -353,29 +353,51 @@ position_excl <- function(content_list, main, lay) {
 
 build_labels <- function(main, excl, lx_main, lx_excl, lay, n_groups) {
   rows <- list()
-  n_bold <- n_groups > 1  # only bold the n-line when there are groups below it
+  n_bold <- n_groups > 1
+
   for (i in seq_len(nrow(main))) {
-    top <- main$y[i] + main$bh[i] / 2 - lay$pad_y
-    rows[[length(rows) + 1L]] <- lbl(lx_main, top, main$title_wrapped[i],
+    top    <- main$y[i] + main$bh[i] / 2 - lay$pad_y
+    cursor <- top
+
+    # Title (bold, possibly wrapped)
+    rows[[length(rows) + 1L]] <- lbl(lx_main, cursor, main$title_wrapped[i],
                                      TRUE, lay$fs_title)
-    if (nchar(main$n_line[i]) > 0)
-      rows[[length(rows) + 1L]] <- lbl(
-        lx_main, top - main$n_title[i] * lay$line_h - lay$section_gap,
-        main$n_line[i], n_bold, lay$fs_body)
-    if (nchar(main$group_text[i]) > 0)
-      rows[[length(rows) + 1L]] <- lbl(
-        lx_main, top - (main$n_title[i] + 1L) * lay$line_h - lay$section_gap,
-        main$group_text[i], FALSE, lay$fs_body)
+    cursor <- cursor - main$n_title[i] * lay$line_h - lay$section_gap
+
+    # n_line (bold when groups follow)
+    if (nchar(main$n_line[i]) > 0) {
+      rows[[length(rows) + 1L]] <- lbl(lx_main, cursor, main$n_line[i],
+                                       n_bold, lay$fs_body)
+      cursor <- cursor - lay$line_h
+    }
+
+    # Group lines — one row each
+    group_lines <- strsplit(main$group_text[i], "\n", fixed = TRUE)[[1]]
+    group_lines <- group_lines[nchar(group_lines) > 0]
+    for (gl in group_lines) {
+      rows[[length(rows) + 1L]] <- lbl(lx_main, cursor, gl, FALSE, lay$fs_body)
+      cursor <- cursor - lay$line_h
+    }
   }
+
   for (i in seq_len(nrow(excl))) {
-    top <- excl$y[i] + excl$bh[i] / 2 - lay$pad_y
-    rows[[length(rows) + 1L]] <- lbl(lx_excl, top, excl$title_wrapped[i],
+    top    <- excl$y[i] + excl$bh[i] / 2 - lay$pad_y
+    cursor <- top
+
+    # Title
+    rows[[length(rows) + 1L]] <- lbl(lx_excl, cursor, excl$title_wrapped[i],
                                      TRUE, lay$fs_body)
-    if (nchar(excl$group_text[i]) > 0)
-      rows[[length(rows) + 1L]] <- lbl(
-        lx_excl, top - excl$n_title[i] * lay$line_h,
-        excl$group_text[i], FALSE, lay$fs_body)
+    cursor <- cursor - excl$n_title[i] * lay$line_h - lay$section_gap
+
+    # Group lines — one row each
+    group_lines <- strsplit(excl$group_text[i], "\n", fixed = TRUE)[[1]]
+    group_lines <- group_lines[nchar(group_lines) > 0]
+    for (gl in group_lines) {
+      rows[[length(rows) + 1L]] <- lbl(lx_excl, cursor, gl, FALSE, lay$fs_body)
+      cursor <- cursor - lay$line_h
+    }
   }
+
   dplyr::bind_rows(rows)
 }
 
