@@ -179,7 +179,7 @@ p <- df_many |>
   include_if(wt  >= 15, "Weight >= 15 kg") |>
   consort_plot()
 save_consort_plot(p, "six_groups", formats = "png", dpi = 150)
-knitr::include_graphics("six_groups.png"))
+knitr::include_graphics("six_groups.png")
 ```
 
 ```{r stress-many-steps, fig.alt = "Stress test: 6 steps, 2 groups."}
