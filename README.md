@@ -12,6 +12,8 @@ packages it supports **multi-group studies** — flowcharts show per-group
 (site / country) counts alongside the trial total, with optional "N/A" marking
 for steps that did not apply to a particular group.
 
+Fair warning: Most of the code (and all of the documentation and tests) are AI written.
+TODO: Move to using proper grid objects instead of ggplot, to fix box size issues.
 ---
 
 ## Installation
