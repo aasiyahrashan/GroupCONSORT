@@ -139,19 +139,18 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
 layout_params <- function(fs) {
   fs_pt <- 8 * fs
 
-  # Baseline-to-baseline distance at this font size with lineheight=1.5
+  # Baseline-to-baseline distance at this font size with lineheight=1.3
   g2 <- grid::textGrob(
     "Ag\nAg",
-    gp = grid::gpar(fontsize = fs_pt, fontface = "plain", lineheight = 1.5)
+    gp = grid::gpar(fontsize = fs_pt, fontface = "plain", lineheight = 1.3)
   )
   lh <- grid::convertHeight(grid::grobHeight(g2), "mm", valueOnly = TRUE) / 2
 
   list(
     fs_pt          = fs_pt,
-    lineheight     = 1.5,         # must match the reference grob
+    lineheight     = 1.3,         # must match the reference grob
     line_height_mm = lh,
-    # Small gap once between title block and body (n_line + group_lines)
-    section_gap_mm = lh * 0.25,
+    section_gap_mm = 0,
     pad_x_mm       = 2.5 * fs,
     pad_y_mm       = 2.0 * fs,
     gap_mm         = 4   * fs,

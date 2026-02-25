@@ -12,20 +12,20 @@ make_cohort <- function(n_groups = 2) {
     include_if(wt  >= 15, "Weight >= 15")
 }
 
-test_that("consort_plot returns a ggplot for grouped cohort", {
+test_that("consort_plot returns a consort_grob for grouped cohort", {
   p <- consort_plot(make_cohort())
-  expect_s3_class(p, "gg")
+  expect_s3_class(p, "consort_grob")
 })
 
-test_that("consort_plot returns a ggplot for single-group cohort", {
+test_that("consort_plot returns a consort_grob for single-group cohort", {
   p <- consort_plot(make_cohort(1))
-  expect_s3_class(p, "gg")
+  expect_s3_class(p, "consort_grob")
 })
 
 test_that("consort_plot accepts a tracker tibble directly", {
   tr <- get_tracker(make_cohort())
   p  <- consort_plot(tr)
-  expect_s3_class(p, "gg")
+  expect_s3_class(p, "consort_grob")
 })
 
 test_that("consort_plot errors on invalid tracker", {
@@ -35,13 +35,13 @@ test_that("consort_plot errors on invalid tracker", {
 test_that("step_labels renames steps without error", {
   co <- make_cohort()
   p  <- consort_plot(co, step_labels = c("Age >= 10" = "Paediatric / adult"))
-  expect_s3_class(p, "gg")
+  expect_s3_class(p, "consort_grob")
 })
 
 test_that("group_labels renames groups without error", {
   co <- make_cohort()
   p  <- consort_plot(co, group_labels = c("A" = "Centre A"))
-  expect_s3_class(p, "gg")
+  expect_s3_class(p, "consort_grob")
 })
 
 test_that("unknown step_labels produces a warning", {
@@ -55,8 +55,8 @@ test_that("unknown step_labels produces a warning", {
 test_that("na_cells marks correct cells and plot still renders", {
   co <- make_cohort()
   p  <- consort_plot(co,
-    na_cells = data.frame(step = "Weight >= 15", group = "A"))
-  expect_s3_class(p, "gg")
+                     na_cells = data.frame(step = "Weight >= 15", group = "A"))
+  expect_s3_class(p, "consort_grob")
 })
 
 test_that("na_cells with bad column names errors", {
@@ -75,27 +75,27 @@ test_that("na_cells must be a data frame", {
 test_that("font_size scaling does not break layout (smoke test)", {
   co <- make_cohort()
   for (fs in c(0.5, 1, 1.5, 2)) {
-    expect_s3_class(consort_plot(co, font_size = fs), "gg")
+    expect_s3_class(consort_plot(co, font_size = fs), "consort_grob")
   }
 })
 
 test_that("manual box_width / excl_width accepted", {
   co <- make_cohort()
-  p  <- consort_plot(co, box_width = 3, excl_width = 2)
-  expect_s3_class(p, "gg")
+  p  <- consort_plot(co, box_width = 50, excl_width = 40)
+  expect_s3_class(p, "consort_grob")
 })
 
 test_that("layout attribute is attached to the returned plot", {
   p <- consort_plot(make_cohort())
   ly <- attr(p, ".layout")
   expect_false(is.null(ly))
-  expect_named(ly, c("x", "y", "m"))
+  expect_named(ly, c("w_mm", "h_mm"))
 })
 
 test_that("single-step cohort (no exclusions) renders", {
   df   <- data.frame(id = 1:5, site = c("A", "A", "B", "B", "B"))
   co   <- new_cohort(df, "Only step", id_col = "id", group_col = "site")
-  expect_s3_class(consort_plot(co), "gg")
+  expect_s3_class(consort_plot(co), "consort_grob")
 })
 
 test_that("large number of groups renders without error", {
@@ -106,7 +106,7 @@ test_that("large number of groups renders without error", {
   )
   co <- new_cohort(df, "All", id_col = "id", group_col = "site") |>
     include_if(age >= 18, "Adults")
-  expect_s3_class(consort_plot(co), "gg")
+  expect_s3_class(consort_plot(co), "consort_grob")
 })
 
 test_that("long step labels wrap without error", {
@@ -117,12 +117,12 @@ test_that("long step labels wrap without error", {
   co <- new_cohort(df, "A very long baseline label that goes well beyond typical width",
                    id_col = "id", group_col = NULL) |>
     include_if(age >= 5,
-      "This is a very long exclusion criterion label that should trigger wrapping logic")
-  expect_s3_class(consort_plot(co), "gg")
+               "This is a very long exclusion criterion label that should trigger wrapping logic")
+  expect_s3_class(consort_plot(co), "consort_grob")
 })
 
 test_that("save_consort_plot errors without .layout attribute", {
-  p <- ggplot2::ggplot()
+  p <- structure(list(), class = "consort_grob")
   expect_error(save_consort_plot(p, tempfile()), "No layout metadata")
 })
 
