@@ -9,6 +9,8 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", dpi = 150)
+knitr::opts_chunk$set(echo = TRUE)
+withr::defer(file.remove(list.files(pattern = "\\.png$")), envir = knitr::knit_global())
 library(GroupCONSORT)
 library(dplyr)
 ```
@@ -67,8 +69,8 @@ stretched or compressed by knitr's default sizing.
 
 ```{r plot, fig.alt = "CONSORT flowchart showing attrition through four eligibility steps, with North America and Europe shown separately."}
 p <- consort_plot(cohort)
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "elig", formats = "png", dpi = 150)
+knitr::include_graphics("elig.png")
 ```
 
 ## Relabelling for publication
@@ -82,8 +84,8 @@ p <- consort_plot(
   step_labels  = c("Not on corticosteroids" = "No concurrent corticosteroid use"),
   group_labels = c("North America" = "N. America")
 )
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "label", formats = "png", dpi = 150)
+knitr::include_graphics("label.png")
 ```
 
 ## N/A cells for multi-source studies
@@ -105,8 +107,8 @@ p <- consort_plot(
   cohort_multi,
   na_cells = data.frame(step = "Weight >= 15 kg", group = "North America")
 )
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "na", formats = "png", dpi = 150)
+knitr::include_graphics("na.png")
 ```
 
 ## Single-group studies
@@ -121,8 +123,8 @@ p <- cgd |>
   include_if(steroids == 0,      "Not on corticosteroids") |>
   include_if(follow_up_days > 0, "Positive follow-up time") |>
   consort_plot()
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "single", formats = "png", dpi = 150)
+knitr::include_graphics("single.png")
 ```
 
 ## Pre-filtering outside the pipeline
@@ -176,8 +178,8 @@ p <- df_many |>
   include_if(age >= 18, "Age >= 18 years") |>
   include_if(wt  >= 15, "Weight >= 15 kg") |>
   consort_plot()
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "six_groups", formats = "png", dpi = 150)
+knitr::include_graphics("six_groups.png"))
 ```
 
 ```{r stress-many-steps, fig.alt = "Stress test: 6 steps, 2 groups."}
@@ -192,8 +194,8 @@ p <- df_many |>
   include_if(age >= 20,  "Age >= 20 years") |>
   include_if(wt  >= 10,  "Weight >= 10 kg") |>
   consort_plot()
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "six_steps", formats = "png", dpi = 150)
+knitr::include_graphics("six_steps.png")
 ```
 
 ```{r stress-long-labels, fig.alt = "Stress test: long step labels."}
@@ -207,8 +209,8 @@ p <- df_many |>
   include_if(wt >= 15,
     "Body weight at least 15 kg as recorded at baseline assessment") |>
   consort_plot()
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "long_label", formats = "png", dpi = 150)
+knitr::include_graphics("long_label.png")
 ```
 
 ```{r stress-large-font, fig.alt = "Stress test: font_size = 1.4."}
@@ -217,6 +219,6 @@ p <- df_many |>
   include_if(age >= 18, "Age >= 18 years") |>
   include_if(wt  >= 15, "Weight >= 15 kg") |>
   consort_plot(font_size = 1.4)
-save_consort_plot(p, tmp <- tempfile(), formats = "png", dpi = 150)
-knitr::include_graphics(paste0(tmp, ".png"))
+save_consort_plot(p, "large_font", formats = "png", dpi = 150)
+knitr::include_graphics("large_font.png")
 ```
