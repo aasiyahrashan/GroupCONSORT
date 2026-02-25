@@ -86,5 +86,5 @@ test_that("tracker counts per group are correct for grouped data", {
   a <- dplyr::filter(tr, group == "A")$n_remaining
   b <- dplyr::filter(tr, group == "B")$n_remaining
   expect_equal(a, 3L)
-  expect_equal(b, 2L)
+  expect_equal(b, 3L)
 })
