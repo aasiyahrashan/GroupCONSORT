@@ -4,22 +4,16 @@
 \alias{save_consort_plot}
 \title{Save a CONSORT flowchart at content-fitting dimensions}
 \usage{
-save_consort_plot(
-  plot,
-  path,
-  formats = c("png", "pdf"),
-  scale = 0.75,
-  dpi = 300
-)
+save_consort_plot(plot, path, formats = c("png", "pdf"), scale = 1, dpi = 300)
 }
 \arguments{
-\item{plot}{A \code{ggplot2} object from \code{\link[=consort_plot]{consort_plot()}}.}
+\item{plot}{A \code{consort_grob} from \code{\link[=consort_plot]{consort_plot()}}.}
 
 \item{path}{Output path without extension.}
 
 \item{formats}{\code{"png"}, \code{"pdf"}, or both.}
 
-\item{scale}{Inches per plot unit.}
+\item{scale}{Multiplier on the natural mm dimensions. Default \code{1}.}
 
 \item{dpi}{PNG resolution.}
 }

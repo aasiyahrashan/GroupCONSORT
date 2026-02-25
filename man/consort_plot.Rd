@@ -19,8 +19,7 @@ consort_plot(
 \code{step}, \code{n_remaining}, \code{n_dropped}.}
 
 \item{na_cells}{A data frame with columns \code{step} and \code{group} identifying
-step-group combinations where the step did not apply. These cells show
-"N/A" in the exclusion box; counts in the main boxes are always shown.
+step–group combinations where the step did not apply (shown as "N/A").
 \code{NULL} (default) means no N/A cells.}
 
 \item{step_labels}{Named character vector renaming steps for display.}
@@ -29,12 +28,13 @@ step-group combinations where the step did not apply. These cells show
 
 \item{font_size}{Multiplicative scaling factor for all text. Default \code{1}.}
 
-\item{box_width}{Width of main boxes in plot units. \code{NULL} = auto.}
+\item{box_width}{Width of main boxes in mm. \code{NULL} = auto.}
 
-\item{excl_width}{Width of exclusion boxes in plot units. \code{NULL} = auto.}
+\item{excl_width}{Width of exclusion boxes in mm. \code{NULL} = auto.}
 }
 \value{
-A \code{ggplot2} object.
+A \code{consort_grob} (a \code{gTree}). Print it or pass to
+\code{\link[=save_consort_plot]{save_consort_plot()}}.
 }
 \description{
 Draw a publication-quality CONSORT flowchart
