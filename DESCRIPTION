@@ -19,11 +19,12 @@ Imports:
     tibble (>= 3.2.0),
     tidyr (>= 1.3.0)
 Suggests:
+    pkgdown
     survival,
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/YOURNAME/GroupCONSORT
-BugReports: https://github.com/YOURNAME/GroupCONSORT/issues
+URL: URL: https://aasiyahrashan.github.io/GroupCONSORT/
+BugReports: https://github.com/aasiyahrashan/GroupCONSORT/issues
