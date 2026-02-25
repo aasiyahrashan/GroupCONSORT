@@ -4,8 +4,8 @@
 #   x = 0 at LEFT,   increasing rightward, unit = mm
 #   y = 0 at BOTTOM, increasing UPWARD,    unit = mm
 #
-# line_height_mm drives every line step uniformly.
-# A small section_gap_mm is added once between title and body — nowhere else.
+# One line_height_mm for every line step.
+# One section_gap_mm inserted once between title block and body.
 
 #' Draw a publication-quality CONSORT flowchart
 #'
@@ -130,28 +130,30 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
 
 # =========================================================================
 # Layout params
+#
+# line_height_mm: measured from a 2-line plain reference grob (baseline to
+# baseline). Multiplied by 1.5 for comfortable leading that accommodates
+# bold lines without them appearing cramped against the following plain line.
 # =========================================================================
 
 layout_params <- function(fs) {
   fs_pt <- 8 * fs
 
-  # Canonical line height: baseline-to-baseline from a 2-line reference grob
+  # Baseline-to-baseline distance at this font size with lineheight=1.5
   g2 <- grid::textGrob(
     "Ag\nAg",
-    gp = grid::gpar(fontsize = fs_pt, fontface = "plain", lineheight = 1.2)
+    gp = grid::gpar(fontsize = fs_pt, fontface = "plain", lineheight = 1.5)
   )
   lh <- grid::convertHeight(grid::grobHeight(g2), "mm", valueOnly = TRUE) / 2
 
   list(
     fs_pt          = fs_pt,
-    lineheight     = 1.2,
+    lineheight     = 1.5,         # must match the reference grob
     line_height_mm = lh,
-    # Small gap inserted ONCE between last title line and first body line.
-    # Accounts for the visual weight difference between bold title and body.
-    # Applied in both box_height_mm and text_block_grob — nowhere else.
-    section_gap_mm = lh * 0.4,
+    # Small gap once between title block and body (n_line + group_lines)
+    section_gap_mm = lh * 0.25,
     pad_x_mm       = 2.5 * fs,
-    pad_y_mm       = 2.2 * fs,
+    pad_y_mm       = 2.0 * fs,
     gap_mm         = 4   * fs,
     h_gap_mm       = 5   * fs,
     col_line       = "grey20",
@@ -290,7 +292,6 @@ wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
   })
 }
 
-# Box height: title lines × lh + section_gap (if body follows) + body lines × lh + 2 × pad_y
 box_height_mm <- function(item, lay) {
   lh      <- lay$line_height_mm
   n_title <- item$n_title_lines %||%
@@ -440,8 +441,6 @@ arrow_grob <- function(x0, y0, x1, y1, lay) {
   )
 }
 
-# Text lines top-to-bottom, stepping by lh each time.
-# section_gap added once after the last title line, before first body line.
 text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
   grobs  <- list()
   cursor <- y_start
@@ -454,7 +453,7 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
                          col = lay$col_line, lineheight = lay$lineheight)
   add <- function(g) grobs[[length(grobs) + 1L]] <<- g
 
-  # Title lines (bold)
+  # Title lines (bold) — uniform lh step each
   title_lines <- strsplit(item$title_wrapped %||% item$title,
                           "\n", fixed = TRUE)[[1]]
   for (tl in title_lines) {
@@ -464,7 +463,7 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
     cursor <- cursor - lh
   }
 
-  # Section gap — applied once after title, only when body follows
+  # Section gap once, only when body follows
   has_body <- (!is.null(item$n_line) && nchar(item$n_line) > 0) ||
     length(item$group_lines) > 0
   if (has_body) cursor <- cursor - lay$section_gap_mm
@@ -478,7 +477,7 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
     cursor <- cursor - lh
   }
 
-  # Group lines
+  # Group lines — uniform lh step each
   for (gl in item$group_lines) {
     add(grid::textGrob(label = gl,
                        x = u(x_left), y = u(cursor),

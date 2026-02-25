@@ -44,9 +44,6 @@ cohort <- cgd |>
 consort_plot(cohort)
 ```
 
-The result is a `ggplot2` object you can further theme or combine with
-`patchwork`.
-
 ---
 
 ## Key features

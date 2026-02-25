@@ -13,7 +13,7 @@ save_consort_plot(plot, path, formats = c("png", "pdf"), scale = 1, dpi = 300)
 
 \item{formats}{\code{"png"}, \code{"pdf"}, or both.}
 
-\item{scale}{Multiplier on the natural mm dimensions. Default \code{1}.}
+\item{scale}{Multiplier on natural mm dimensions. Default \code{1}.}
 
 \item{dpi}{PNG resolution.}
 }
