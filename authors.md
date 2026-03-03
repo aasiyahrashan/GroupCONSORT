@@ -3,7 +3,6 @@
 ## Authors
 
 - **First Last**. Author, maintainer.
-  [](https://orcid.org/YOUR-ORCID-ID)
 
 ## Citation
 
