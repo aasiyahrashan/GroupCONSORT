@@ -14,6 +14,9 @@
 - [`include_if()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/include_if.md)
   : Apply an inclusion filter and record the attrition step
 
+- [`merge_trackers()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/merge_trackers.md)
+  : Merge tracker tibbles from independently-processed datasets
+
 - [`new_cohort()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/new_cohort.md)
   : Create a cohort object and initialise the attrition tracker
 

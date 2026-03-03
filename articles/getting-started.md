@@ -86,7 +86,7 @@ nrow(get_data(cohort))
 ## Drawing the flowchart
 
 [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md)
-returns a ggplot2 object. Use
+returns a `consort_grob` object (a grid graphics tree). Use
 [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md)
 to write it to disk at content-fitted dimensions, then display it with
 [`knitr::include_graphics()`](https://rdrr.io/pkg/knitr/man/include_graphics.html).
@@ -95,9 +95,8 @@ knitr’s default sizing.
 
 ``` r
 p <- consort_plot(cohort)
-save_consort_plot(p, "elig", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "elig"))
 #> Saved: elig.png
-knitr::include_graphics("elig.png")
 ```
 
 ![CONSORT flowchart showing attrition through four eligibility steps,
@@ -114,9 +113,8 @@ p <- consort_plot(
   step_labels  = c("Not on corticosteroids" = "No concurrent corticosteroid use"),
   group_labels = c("North America" = "N. America")
 )
-save_consort_plot(p, "label", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "label"))
 #> Saved: label.png
-knitr::include_graphics("label.png")
 ```
 
 ![CONSORT flowchart with relabelled steps and groups.](label.png)
@@ -140,13 +138,53 @@ p <- consort_plot(
   cohort_multi,
   na_cells = data.frame(step = "Weight >= 15 kg", group = "North America")
 )
-save_consort_plot(p, "na", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "na"))
 #> Saved: na.png
-knitr::include_graphics("na.png")
 ```
 
 ![CONSORT flowchart with N/A in the exclusion box for North America at
 the weight step.](na.png)
+
+## Merging trackers from separate datasets
+
+When data from different sources are processed independently — for
+example, countries run through separate pipelines where not all
+eligibility criteria apply to every dataset — use
+[`merge_trackers()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/merge_trackers.md)
+to combine them into a single flowchart. Groups missing a step are
+carried forward at their last known count and automatically flagged as
+N/A in the exclusion boxes.
+
+[`merge_trackers()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/merge_trackers.md)
+returns a list with `$tracker` and `$na_cells`, both of which are passed
+directly to
+[`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md).
+
+``` r
+# Europe: both steps applied
+tracker_eu <- cgd |>
+  filter(region == "Europe") |>
+  new_cohort("Randomised", id_col = "id", group_col = "region") |>
+  include_if(age >= 5,     "Age >= 5 years") |>
+  include_if(weight >= 15, "Weight >= 15 kg") |>
+  get_tracker()
+
+# North America: weight step was not run for this dataset
+tracker_na <- cgd |>
+  filter(region == "North America") |>
+  new_cohort("Randomised", id_col = "id", group_col = "region") |>
+  include_if(age >= 5, "Age >= 5 years") |>
+  get_tracker()
+
+result <- merge_trackers(tracker_eu, tracker_na)
+
+p <- consort_plot(result$tracker, na_cells = result$na_cells)
+knitr::include_graphics(save_fig(p, "merge"))
+#> Saved: merge.png
+```
+
+![CONSORT flowchart merging two independently-processed regional
+datasets, with N/A where a step did not apply.](merge.png)
 
 ## Single-group studies
 
@@ -160,9 +198,8 @@ p <- cgd |>
   include_if(steroids == 0,      "Not on corticosteroids") |>
   include_if(follow_up_days > 0, "Positive follow-up time") |>
   consort_plot()
-save_consort_plot(p, "single", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "single"))
 #> Saved: single.png
-knitr::include_graphics("single.png")
 ```
 
 ![CONSORT flowchart with no per-group breakdown.](single.png)
@@ -193,20 +230,19 @@ cgd |>
 
 ## Saving
 
-The
 [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md)
-function computes figure dimensions from the plot content so text and
-boxes stay consistently sized regardless of how many steps or groups
-there are. Figures are saved with a transparent background.
+computes figure dimensions from the plot content so text and boxes stay
+consistently sized regardless of how many steps or groups there are.
+Figures are saved with a transparent background.
 
 ``` r
 p <- consort_plot(cohort)
 save_consort_plot(p, "consort_flowchart", formats = c("png", "pdf"))
 ```
 
-The `scale` argument (default `0.75`) controls conversion from internal
-plot units to inches — increase it to produce a physically larger figure
-without changing layout proportions. The `font_size` argument to
+The `scale` argument (default `1`) multiplies the natural mm dimensions
+— increase it to produce a physically larger figure without changing
+layout proportions. The `font_size` argument to
 [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md)
 scales all text and box dimensions together.
 
@@ -221,9 +257,8 @@ p <- df_many |>
   include_if(age >= 18, "Age >= 18 years") |>
   include_if(wt  >= 15, "Weight >= 15 kg") |>
   consort_plot()
-save_consort_plot(p, "six_groups", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "six_groups"))
 #> Saved: six_groups.png
-knitr::include_graphics("six_groups.png")
 ```
 
 ![Stress test: 6 groups, 2 steps.](six_groups.png)
@@ -240,9 +275,8 @@ p <- df_many |>
   include_if(age >= 20,  "Age >= 20 years") |>
   include_if(wt  >= 10,  "Weight >= 10 kg") |>
   consort_plot()
-save_consort_plot(p, "six_steps", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "six_steps"))
 #> Saved: six_steps.png
-knitr::include_graphics("six_steps.png")
 ```
 
 ![Stress test: 6 steps, 2 groups.](six_steps.png)
@@ -258,9 +292,8 @@ p <- df_many |>
   include_if(wt >= 15,
     "Body weight at least 15 kg as recorded at baseline assessment") |>
   consort_plot()
-save_consort_plot(p, "long_label", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "long_label"))
 #> Saved: long_label.png
-knitr::include_graphics("long_label.png")
 ```
 
 ![Stress test: long step labels.](long_label.png)
@@ -271,9 +304,8 @@ p <- df_many |>
   include_if(age >= 18, "Age >= 18 years") |>
   include_if(wt  >= 15, "Weight >= 15 kg") |>
   consort_plot(font_size = 1.4)
-save_consort_plot(p, "large_font", formats = "png", dpi = 150)
+knitr::include_graphics(save_fig(p, "large_font"))
 #> Saved: large_font.png
-knitr::include_graphics("large_font.png")
 ```
 
 ![Stress test: font_size = 1.4.](large_font.png)
