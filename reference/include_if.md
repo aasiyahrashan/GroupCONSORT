@@ -25,7 +25,8 @@ include_if(cohort, condition, label)
 
 ## Value
 
-The updated `cohort` object.
+The updated `cohort` object. The tracker records unique `id_col` counts
+(patients/entities), not row counts.
 
 ## Examples
 

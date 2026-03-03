@@ -228,6 +228,87 @@ cgd |>
 #> 6 North America Not on corticosteroids          15         0
 ```
 
+## Per-patient grouped filtering
+
+When rows represent observations rather than patients (e.g. one row per
+ICU admission), conditions involving aggregate functions like
+[`min()`](https://rdrr.io/r/base/Extremes.html) or
+[`max()`](https://rdrr.io/r/base/Extremes.html) need to be evaluated per
+patient rather than across the whole dataset.
+[`include_if_grouped()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/include_if_grouped.md)
+handles this by grouping on `id_col` before filtering, so the
+aggregation is always patient-scoped.
+
+``` r
+# prep_cgd_example() already has one row per patient, so we simulate a
+# multi-row-per-patient dataset by duplicating with a fake admission time.
+set.seed(42)
+cgd_multi <- prep_cgd_example() |>
+  dplyr::slice(rep(seq_len(dplyr::n()), each = 2)) |>
+  dplyr::mutate(
+    admission_day = follow_up_days + sample(c(0L, 5L, 10L), dplyr::n(),
+                                            replace = TRUE)
+  )
+
+cohort_grouped <- cgd_multi |>
+  new_cohort("All admissions", id_col = "id", group_col = "region") |>
+  include_if(age >= 5, "Age >= 5 years") |>
+  include_if_grouped(
+    admission_day == min(admission_day),
+    "First admission per patient"
+  )
+#> Note: `id_col` 'id' has 128 unique values across 256 rows (multi-row-per-entity data detected). The tracker will count unique 'id' values, not rows.
+
+get_tracker(cohort_grouped)
+#> # A tibble: 6 × 4
+#>   group         step                        n_remaining n_dropped
+#>   <chr>         <chr>                             <int>     <int>
+#> 1 Europe        All admissions                      102         0
+#> 2 North America All admissions                       26         0
+#> 3 Europe        Age >= 5 years                       89        13
+#> 4 North America Age >= 5 years                       24         2
+#> 5 Europe        First admission per patient          89         0
+#> 6 North America First admission per patient          24         0
+```
+
+If a patient has ties on the condition (two rows sharing the minimum
+value), both rows are retained. Use
+[`dplyr::slice_min()`](https://dplyr.tidyverse.org/reference/slice.html)
+directly on
+[`get_data()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/get_data.md)
+if you need strict deduplication.
+
+## Mutating between filter steps
+
+[`update_data()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/update_data.md)
+replaces `cohort$data` without touching the tracker. This is useful when
+you need to derive a column — via a data.table join, `mutate()`, or any
+other operation — that cannot be expressed as a simple filter condition.
+
+``` r
+cohort_bmi <- cgd |>
+  new_cohort("Randomised", id_col = "id", group_col = "region") |>
+  include_if(age >= 5, "Age >= 5 years")
+
+# Derive a column outside the pipe, then re-enter
+enriched <- get_data(cohort_bmi) |>
+  dplyr::mutate(bmi_proxy = weight / sqrt(age))
+
+cohort_bmi <- update_data(cohort_bmi, enriched) |>
+  include_if(bmi_proxy < 20, "BMI proxy < 20")
+
+get_tracker(cohort_bmi)
+#> # A tibble: 6 × 4
+#>   group         step           n_remaining n_dropped
+#>   <chr>         <chr>                <int>     <int>
+#> 1 Europe        Randomised             102         0
+#> 2 North America Randomised              26         0
+#> 3 Europe        Age >= 5 years          89        13
+#> 4 North America Age >= 5 years          24         2
+#> 5 Europe        BMI proxy < 20          88         1
+#> 6 North America BMI proxy < 20          24         0
+```
+
 ## Saving
 
 [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md)

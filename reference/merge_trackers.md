@@ -43,7 +43,7 @@ A named list with two elements:
 
 - `na_cells`:
 
-  A data frame with columns `step` and `group` identifying step–group
+  A data frame with columns `step` and `group` identifying step-group
   combinations that did not apply to a group's source dataset. Pass this
   directly to the `na_cells` argument of
   [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md).

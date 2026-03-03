@@ -149,6 +149,9 @@ Bug reports and pull requests are welcome at
 - [`include_if()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/include_if.md)
   : Apply an inclusion filter and record the attrition step
 
+- [`include_if_grouped()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/include_if_grouped.md)
+  : Apply a per-patient inclusion filter and record the attrition step
+
 - [`merge_trackers()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/merge_trackers.md)
   : Merge tracker tibbles from independently-processed datasets
 
@@ -166,6 +169,9 @@ Bug reports and pull requests are welcome at
 
 - [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md)
   : Save a CONSORT flowchart at content-fitting dimensions
+
+- [`update_data()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/update_data.md)
+  : Replace cohort data without modifying the tracker
 
 # Articles
 

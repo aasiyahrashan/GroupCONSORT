@@ -55,8 +55,10 @@
 
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>Data frame with one row per observation and a unique patient ID
-column.</p></dd>
+<dd><p>Data frame with one or more rows per entity.
+May contain multiple rows per patient (e.g. one row per visit,
+encounter, or observation). The tracker always counts <strong>unique values
+of <code>id_col</code></strong> (i.e. patients/entities), not rows.</p></dd>
 
 
 <dt id="arg-label">label<a class="anchor" aria-label="anchor" href="#arg-label"></a></dt>
@@ -64,7 +66,13 @@ column.</p></dd>
 
 
 <dt id="arg-id-col">id_col<a class="anchor" aria-label="anchor" href="#arg-id-col"></a></dt>
-<dd><p>Name of the unique patient identifier column.</p></dd>
+<dd><p>Name of the column that uniquely identifies each
+patient or entity. <strong>This is the unit of counting throughout the
+pipeline.</strong> Every <code><a href="include_if.html">include_if()</a></code> and <code><a href="include_if_grouped.html">include_if_grouped()</a></code> step
+reports how many distinct <code>id_col</code> values remain, regardless of how
+many rows each entity contributes. Make sure this column genuinely
+represents the entity you want to count (e.g. <code>"patient_id"</code>, not
+<code>"visit_id"</code>).</p></dd>
 
 
 <dt id="arg-group-col">group_col<a class="anchor" aria-label="anchor" href="#arg-group-col"></a></dt>
@@ -75,6 +83,33 @@ missing column both produce a single <code>"All"</code> group.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>cohort</code> object.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+
+<div class="section">
+<h3 id="counting-unit">Counting unit<a class="anchor" aria-label="anchor" href="#counting-unit"></a></h3>
+
+
+<p>The tracker counts <strong>unique <code>id_col</code> values</strong>, not rows.
+This means multi-row-per-patient datasets (e.g. repeated encounters)
+work correctly out of the box — <code>n_remaining</code> and <code>n_dropped</code> always
+refer to patient/entity counts.</p>
+<p>If your data has multiple rows per entity, consider using
+<code><a href="include_if_grouped.html">include_if_grouped()</a></code> for filter conditions that involve per-patient
+aggregates (e.g. keeping only the first admission).</p>
+</div>
+
+<div class="section">
+<h3 id="baseline-step">Baseline step<a class="anchor" aria-label="anchor" href="#baseline-step"></a></h3>
+
+
+<p>The baseline step is always recorded with <code>n_dropped = 0</code>. This does not
+imply that no filtering occurred before the data was passed to
+<code>new_cohort()</code> — it simply marks the starting point of the tracked
+pipeline.</p>
+</div>
+
     </div>
 
     <div class="section level2">
