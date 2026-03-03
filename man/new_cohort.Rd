@@ -10,6 +10,13 @@ new_cohort(
   id_col = "person_id",
   group_col = "country"
 )
+
+new_cohort(
+  data,
+  label = "Base cohort",
+  id_col = "person_id",
+  group_col = "country"
+)
 }
 \arguments{
 \item{data}{Data frame with one row per observation and a unique patient ID
@@ -24,11 +31,19 @@ missing column both produce a single \code{"All"} group.}
 }
 \value{
 A \code{cohort} object.
+
+A \code{cohort} object.
 }
 \description{
 Create a cohort object and initialise the attrition tracker
+
+Create a cohort object and initialise the attrition tracker
 }
 \examples{
+cgd <- prep_cgd_example()
+cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
+                     group_col = "region")
+
 cgd <- prep_cgd_example()
 cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
                      group_col = "region")

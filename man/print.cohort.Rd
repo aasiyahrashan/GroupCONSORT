@@ -5,6 +5,8 @@
 \title{Print method for cohort objects}
 \usage{
 \method{print}{cohort}(x, ...)
+
+\method{print}{cohort}(x, ...)
 }
 \arguments{
 \item{x}{A \code{cohort} object.}
@@ -12,5 +14,7 @@
 \item{...}{Ignored.}
 }
 \description{
+Print method for cohort objects
+
 Print method for cohort objects
 }

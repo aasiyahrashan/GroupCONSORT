@@ -5,6 +5,8 @@
 \title{Apply an inclusion filter and record the attrition step}
 \usage{
 include_if(cohort, condition, label)
+
+include_if(cohort, condition, label)
 }
 \arguments{
 \item{cohort}{A \code{cohort} object from \code{\link[=new_cohort]{new_cohort()}}.}
@@ -15,11 +17,21 @@ include_if(cohort, condition, label)
 }
 \value{
 The updated \code{cohort} object.
+
+The updated \code{cohort} object.
 }
 \description{
 Apply an inclusion filter and record the attrition step
+
+Apply an inclusion filter and record the attrition step
 }
 \examples{
+cgd <- prep_cgd_example()
+cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
+                     group_col = "region") |>
+  include_if(age >= 5, "Age >= 5 years") |>
+  include_if(steroids == 0, "Not on corticosteroids")
+
 cgd <- prep_cgd_example()
 cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
                      group_col = "region") |>
