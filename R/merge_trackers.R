@@ -19,7 +19,7 @@
 #'     \item{`tracker`}{A single tracker tibble with columns `group`, `step`,
 #'       `n_remaining`, `n_dropped`, suitable for passing to [consort_plot()].}
 #'     \item{`na_cells`}{A data frame with columns `step` and `group`
-#'       identifying step–group combinations that did not apply to a group's
+#'       identifying step-group combinations that did not apply to a group's
 #'       source dataset. Pass this directly to the `na_cells` argument of
 #'       [consort_plot()].}
 #'   }
@@ -89,23 +89,48 @@ merge_trackers <- function(..., step_order = NULL, group_order = NULL) {
 
   na_cells <- missing  # these will be flagged as N/A in the plot
 
-  # For missing cells, carry forward the last known n_remaining for that group
-  # so the totals remain correct. n_dropped = 0 (criterion didn't apply).
-  filled <- if (nrow(missing) > 0) {
-    # Last known n_remaining per group from the combined data
-    last_n <- combined |>
-      dplyr::group_by(.data$group) |>
-      dplyr::slice_tail(n = 1) |>
-      dplyr::ungroup() |>
-      dplyr::select("group", last_n = "n_remaining")
+  # For missing cells, carry forward step-by-step through the ordered steps
+  # so that intermediate missing steps get the correct last-known count.
+  #
+  # The old code used slice_tail() on the combined data, which gave every
 
-    missing |>
-      dplyr::left_join(last_n, by = "group") |>
-      dplyr::mutate(
-        n_remaining = .data$last_n,
-        n_dropped   = 0L
-      ) |>
-      dplyr::select("group", "step", "n_remaining", "n_dropped")
+  # missing step the *final* observed n for that group.  That is wrong when
+  # the gap is in the middle: e.g. if group A has steps 1,2,4 but not 3,
+  # step 3 should carry forward from step 2's count, not step 4's.
+  filled <- if (nrow(missing) > 0) {
+    observed <- dplyr::select(combined, "group", "step", "n_remaining")
+
+    fill_rows <- list()
+    for (g in all_groups) {
+      g_observed <- dplyr::filter(observed, .data$group == g)
+      g_missing  <- dplyr::filter(missing,  .data$group == g)
+      if (nrow(g_missing) == 0) next
+
+      # Walk through steps in canonical order, carrying forward
+      last_known <- NA_integer_
+      step_n <- stats::setNames(rep(NA_integer_, length(all_steps)), all_steps)
+      for (s in all_steps) {
+        obs_row <- g_observed[g_observed$step == s, , drop = FALSE]
+        if (nrow(obs_row) > 0) {
+          last_known <- obs_row$n_remaining[1]
+          step_n[s]  <- last_known
+        } else {
+          step_n[s] <- last_known
+        }
+      }
+
+      for (j in seq_len(nrow(g_missing))) {
+        s <- g_missing$step[j]
+        fill_rows[[length(fill_rows) + 1L]] <- tibble::tibble(
+          group       = g,
+          step        = s,
+          n_remaining = step_n[s],
+          n_dropped   = 0L
+        )
+      }
+    }
+
+    dplyr::bind_rows(fill_rows)
   } else {
     NULL
   }

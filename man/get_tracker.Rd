@@ -5,19 +5,13 @@
 \title{Extract the attrition tracker from a cohort object}
 \usage{
 get_tracker(cohort)
-
-get_tracker(cohort)
 }
 \arguments{
 \item{cohort}{A \code{cohort} object.}
 }
 \value{
 A tibble with columns \code{group}, \code{step}, \code{n_remaining}, \code{n_dropped}.
-
-A tibble with columns \code{group}, \code{step}, \code{n_remaining}, \code{n_dropped}.
 }
 \description{
-Extract the attrition tracker from a cohort object
-
 Extract the attrition tracker from a cohort object
 }

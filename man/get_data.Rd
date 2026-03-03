@@ -5,19 +5,13 @@
 \title{Extract the data frame from a cohort object}
 \usage{
 get_data(cohort)
-
-get_data(cohort)
 }
 \arguments{
 \item{cohort}{A \code{cohort} object.}
 }
 \value{
 The filtered data frame at the current stage.
-
-The filtered data frame at the current stage.
 }
 \description{
-Extract the data frame from a cohort object
-
 Extract the data frame from a cohort object
 }

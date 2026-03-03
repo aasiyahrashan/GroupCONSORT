@@ -33,6 +33,9 @@ consort_plot <- function(tracker,
 
   if (inherits(tracker, "cohort")) tracker <- get_tracker(tracker)
   validate_tracker(tracker)
+  # Record which steps were explicitly renamed so clean_label() skips them.
+  renamed_steps <- if (!is.null(step_labels)) unname(step_labels) else character(0)
+
   tracker <- recode_tracker(tracker, step_labels, group_labels)
 
   steps    <- unique(tracker$step)
@@ -43,7 +46,7 @@ consort_plot <- function(tracker,
   tracker <- flag_na_cells(tracker, na_cells)
   lay     <- layout_params(font_size)
 
-  mc <- build_main_content(tracker, steps, n_groups)
+  mc <- build_main_content(tracker, steps, n_groups, renamed_steps)
   ec <- build_excl_content(tracker, steps, n_steps, n_groups)
 
   bw <- box_width  %||% auto_width_mm(mc, lay)
@@ -193,11 +196,14 @@ flag_na_cells <- function(tracker, na_cells) {
 # Content builders
 # =========================================================================
 
-build_main_content <- function(tracker, steps, n_groups) {
+build_main_content <- function(tracker, steps, n_groups,
+                               renamed_steps = character(0)) {
   purrr::map(steps, function(s) {
     rows  <- dplyr::filter(tracker, .data$step == s)
     total <- sum(rows$n_remaining, na.rm = TRUE)
-    title <- clean_label(s)
+    # Only apply clean_label to steps NOT explicitly renamed by the user
+    # via step_labels, to avoid clobbering user-supplied display names.
+    title <- if (s %in% renamed_steps) s else clean_label(s)
     n_line <- if (n_groups > 1)
       paste0("Total: n = ", format(total, big.mark = ","))
     else

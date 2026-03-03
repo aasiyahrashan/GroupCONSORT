@@ -23,7 +23,7 @@ A named list with two elements:
 \item{\code{tracker}}{A single tracker tibble with columns \code{group}, \code{step},
 \code{n_remaining}, \code{n_dropped}, suitable for passing to \code{\link[=consort_plot]{consort_plot()}}.}
 \item{\code{na_cells}}{A data frame with columns \code{step} and \code{group}
-identifying step–group combinations that did not apply to a group's
+identifying step-group combinations that did not apply to a group's
 source dataset. Pass this directly to the \code{na_cells} argument of
 \code{\link[=consort_plot]{consort_plot()}}.}
 }

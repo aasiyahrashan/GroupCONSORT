@@ -18,7 +18,7 @@ The updated \code{cohort} object with \verb{$data} replaced by \code{new_data}.
 }
 \description{
 Use between \code{\link[=include_if]{include_if()}} steps when mutations need to be applied to
-\code{cohort$data} — for example, data.table joins or column derivations —
+\code{cohort$data} -- for example, data.table joins or column derivations --
 without recording an attrition step.
 }
 \examples{

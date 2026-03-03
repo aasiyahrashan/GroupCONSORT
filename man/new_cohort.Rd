@@ -10,40 +10,54 @@ new_cohort(
   id_col = "person_id",
   group_col = "country"
 )
-
-new_cohort(
-  data,
-  label = "Base cohort",
-  id_col = "person_id",
-  group_col = "country"
-)
 }
 \arguments{
-\item{data}{Data frame with one row per observation and a unique patient ID
-column.}
+\item{data}{Data frame with one or more rows per entity.
+May contain multiple rows per patient (e.g. one row per visit,
+encounter, or observation). The tracker always counts \strong{unique values
+of \code{id_col}} (i.e. patients/entities), not rows.}
 
 \item{label}{Label for the baseline step, e.g. \code{"Base cohort"}.}
 
-\item{id_col}{Name of the unique patient identifier column.}
+\item{id_col}{Name of the column that uniquely identifies each
+patient or entity. \strong{This is the unit of counting throughout the
+pipeline.} Every \code{\link[=include_if]{include_if()}} and \code{\link[=include_if_grouped]{include_if_grouped()}} step
+reports how many distinct \code{id_col} values remain, regardless of how
+many rows each entity contributes. Make sure this column genuinely
+represents the entity you want to count (e.g. \code{"patient_id"}, not
+\code{"visit_id"}).}
 
 \item{group_col}{Name of the site or country grouping column. \code{NULL} or a
 missing column both produce a single \code{"All"} group.}
 }
 \value{
 A \code{cohort} object.
-
-A \code{cohort} object.
 }
 \description{
 Create a cohort object and initialise the attrition tracker
+}
+\details{
+\subsection{Counting unit}{
 
-Create a cohort object and initialise the attrition tracker
+The tracker counts \strong{unique \code{id_col} values}, not rows.
+This means multi-row-per-patient datasets (e.g. repeated encounters)
+work correctly out of the box --- \code{n_remaining} and \code{n_dropped} always
+refer to patient/entity counts.
+
+If your data has multiple rows per entity, consider using
+\code{\link[=include_if_grouped]{include_if_grouped()}} for filter conditions that involve per-patient
+aggregates (e.g. keeping only the first admission).
+}
+
+\subsection{Baseline step}{
+
+The baseline step is always recorded with \code{n_dropped = 0}. This does not
+imply that no filtering occurred before the data was passed to
+\code{new_cohort()} --- it simply marks the starting point of the tracked
+pipeline.
+}
 }
 \examples{
-cgd <- prep_cgd_example()
-cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
-                     group_col = "region")
-
 cgd <- prep_cgd_example()
 cohort <- new_cohort(cgd, label = "Randomised", id_col = "id",
                      group_col = "region")
