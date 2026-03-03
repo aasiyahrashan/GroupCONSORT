@@ -1,7 +1,7 @@
 # GroupCONSORT
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/YOURNAME/GroupCONSORT/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/YOURNAME/GroupCONSORT/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/aasiyahrashan/GroupCONSORT/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/aasiyahrashan/GroupCONSORT/actions/workflows/R-CMD-check.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 <!-- badges: end -->
 
@@ -12,14 +12,15 @@ packages it supports **multi-group studies** — flowcharts show per-group
 (site / country) counts alongside the trial total, with optional "N/A" marking
 for steps that did not apply to a particular group.
 
-- Fair warning: Most of the code (and all of the documentation and tests) are AI written.
-- [Full documentation](https://aasiyahrashan.github.io/GroupCONSORT/)
+📖 **[Full documentation and examples](https://aasiyahrashan.github.io/GroupCONSORT/articles/getting-started.html)**
+
+> Fair warning: most of the code (and all of the documentation and tests) are AI written.
+
 ---
 
 ## Installation
 
 ```r
-# Install from GitHub
 # install.packages("devtools")
 devtools::install_github("aasiyahrashan/GroupCONSORT")
 ```
@@ -41,8 +42,12 @@ cohort <- cgd |>
   include_if(steroids == 0,      "Not on corticosteroids") |>
   include_if(follow_up_days > 0, "Positive follow-up time")
 
-consort_plot(cohort)
+p <- consort_plot(cohort)
+save_consort_plot(p, "consort", formats = "png")
 ```
+
+See the [vignette](https://aasiyahrashan.github.io/GroupCONSORT/articles/getting-started.html)
+for rendered flowcharts and worked examples.
 
 ---
 
@@ -61,6 +66,10 @@ counts appear automatically in every box.
 **N/A cell support.** Mark step–group combinations that did not apply (e.g. a
 criterion only relevant to one data source) with the `na_cells` argument.
 
+**Merge independent trackers.** Use `merge_trackers()` to combine trackers
+from separately-processed datasets — missing step–group combinations are
+detected and flagged as N/A automatically.
+
 **Rename without re-running.** Use `step_labels` and `group_labels` in
 `consort_plot()` to tidy display text without touching the underlying tracker.
 
@@ -77,51 +86,14 @@ dimensions from the plot layout — no more guessing `fig.width`.
 | `include_if()` | Apply a filter step and record attrition |
 | `get_tracker()` | Extract the attrition tibble |
 | `get_data()` | Extract the filtered data frame |
+| `merge_trackers()` | Combine trackers from separate datasets |
 | `consort_plot()` | Draw the flowchart |
 | `save_consort_plot()` | Save at content-fitting dimensions |
 | `prep_cgd_example()` | Prepare the built-in CGD example dataset |
 
 ---
 
-## More examples
-
-### Single-group study
-
-```r
-cgd |>
-  new_cohort("Randomised", id_col = "id", group_col = NULL) |>
-  include_if(age >= 5,    "Age >= 5 years") |>
-  include_if(steroids == 0, "Not on corticosteroids") |>
-  consort_plot()
-```
-
-### Relabelling for publication
-
-```r
-consort_plot(
-  cohort,
-  step_labels  = c("Not on corticosteroids" = "No concurrent corticosteroid use"),
-  group_labels = c("North America" = "N. America")
-)
-```
-
-### N/A cells for multi-source studies
-
-```r
-# Weight criterion only applied to European centres
-cohort_multi <- cgd |>
-  new_cohort("Randomised", id_col = "id", group_col = "region") |>
-  include_if(age >= 5,                                  "Age >= 5 years") |>
-  include_if(weight >= 15 | region == "North America",  "Weight >= 15 kg") |>
-  include_if(steroids == 0,                             "Not on corticosteroids")
-
-consort_plot(
-  cohort_multi,
-  na_cells = data.frame(step = "Weight >= 15 kg", group = "North America")
-)
-```
-
-### Inspecting attrition
+## Inspecting attrition
 
 ```r
 get_tracker(cohort)
@@ -134,23 +106,17 @@ get_tracker(cohort)
 #>  ...
 ```
 
-### Saving
+---
+
+## Saving
 
 ```r
 p <- consort_plot(cohort)
 save_consort_plot(p, "figures/consort", formats = c("png", "pdf"))
 ```
 
-The `scale` argument (default `0.75`) controls physical size without affecting
-proportions.
-
----
-
-## Font size and large text
-
-All font sizes scale with the `font_size` argument. Box dimensions recompute
-automatically so content never overflows, regardless of font size or label
-length. For very long step labels the title text wraps to fit the box width.
+The `scale` argument (default `1`) multiplies the natural figure dimensions —
+increase it for a physically larger output without affecting proportions.
 
 ---
 
