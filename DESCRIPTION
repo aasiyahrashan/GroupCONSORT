@@ -2,8 +2,7 @@ Package: GroupCONSORT
 Title: Group-Stratified CONSORT Flowcharts for Clinical Trials
 Version: 0.1.0
 Authors@R:
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
 Description: A pipe-friendly toolkit for tracking patient attrition through
     inclusion and exclusion criteria and producing publication-quality CONSORT
     flowcharts stratified by site or country group. Flowchart layout adapts
