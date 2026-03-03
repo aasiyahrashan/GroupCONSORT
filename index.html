@@ -57,16 +57,16 @@
 <!-- badges: start -->
 
 <p><strong>GroupCONSORT</strong> is a pipe-friendly R package for tracking patient attrition through inclusion/exclusion criteria and producing publication-quality <a href="https://www.consort-statement.org/" class="external-link">CONSORT</a> flowcharts. Unlike most existing packages it supports <strong>multi-group studies</strong> — flowcharts show per-group (site / country) counts alongside the trial total, with optional “N/A” marking for steps that did not apply to a particular group.</p>
-<ul>
-<li>Fair warning: Most of the code (and all of the documentation and tests) are AI written.</li>
-<li><h2 id="full-documentation"><a href="https://aasiyahrashan.github.io/GroupCONSORT/">Full documentation</a></h2></li>
-</ul>
+<p>📖 <strong><a href="https://aasiyahrashan.github.io/GroupCONSORT/articles/getting-started.html">Full documentation and examples</a></strong></p>
+<blockquote>
+<p>Fair warning: most of the code (and all of the documentation and tests) are AI written.</p>
+</blockquote>
+<hr>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Install from GitHub</span></span>
-<span><span class="co"># install.packages("devtools")</span></span>
+<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"aasiyahrashan/GroupCONSORT"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -86,7 +86,9 @@
 <span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">steroids</span> <span class="op">==</span> <span class="fl">0</span>,      <span class="st">"Not on corticosteroids"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">follow_up_days</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="st">"Positive follow-up time"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span><span class="va">cohort</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span><span class="va">cohort</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/save_consort_plot.html">save_consort_plot</a></span><span class="op">(</span><span class="va">p</span>, <span class="st">"consort"</span>, formats <span class="op">=</span> <span class="st">"png"</span><span class="op">)</span></span></code></pre></div>
+<p>See the <a href="https://aasiyahrashan.github.io/GroupCONSORT/articles/getting-started.html">vignette</a> for rendered flowcharts and worked examples.</p>
 <hr>
 </div>
 <div class="section level2">
@@ -96,6 +98,7 @@
 <p><strong>Automatic layout.</strong> Box sizes, widths, and arrow positions are computed from the actual text content. Flowcharts stay legible whether you have 3 steps or 10, 1 group or 8.</p>
 <p><strong>Group stratification.</strong> Pass <code>group_col</code> to <code><a href="reference/new_cohort.html">new_cohort()</a></code> and per-group counts appear automatically in every box.</p>
 <p><strong>N/A cell support.</strong> Mark step–group combinations that did not apply (e.g. a criterion only relevant to one data source) with the <code>na_cells</code> argument.</p>
+<p><strong>Merge independent trackers.</strong> Use <code><a href="reference/merge_trackers.html">merge_trackers()</a></code> to combine trackers from separately-processed datasets — missing step–group combinations are detected and flagged as N/A automatically.</p>
 <p><strong>Rename without re-running.</strong> Use <code>step_labels</code> and <code>group_labels</code> in <code><a href="reference/consort_plot.html">consort_plot()</a></code> to tidy display text without touching the underlying tracker.</p>
 <p><strong>Content-fitting export.</strong> <code><a href="reference/save_consort_plot.html">save_consort_plot()</a></code> calculates the right figure dimensions from the plot layout — no more guessing <code>fig.width</code>.</p>
 <hr>
@@ -126,14 +129,18 @@
 <td>Extract the filtered data frame</td>
 </tr>
 <tr class="odd">
+<td><code><a href="reference/merge_trackers.html">merge_trackers()</a></code></td>
+<td>Combine trackers from separate datasets</td>
+</tr>
+<tr class="even">
 <td><code><a href="reference/consort_plot.html">consort_plot()</a></code></td>
 <td>Draw the flowchart</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code><a href="reference/save_consort_plot.html">save_consort_plot()</a></code></td>
 <td>Save at content-fitting dimensions</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code><a href="reference/prep_cgd_example.html">prep_cgd_example()</a></code></td>
 <td>Prepare the built-in CGD example dataset</td>
 </tr>
@@ -142,48 +149,9 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="more-examples">More examples<a class="anchor" aria-label="anchor" href="#more-examples"></a>
+<h2 id="inspecting-attrition">Inspecting attrition<a class="anchor" aria-label="anchor" href="#inspecting-attrition"></a>
 </h2>
-<div class="section level3">
-<h3 id="single-group-study">Single-group study<a class="anchor" aria-label="anchor" href="#single-group-study"></a>
-</h3>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cgd</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/new_cohort.html">new_cohort</a></span><span class="op">(</span><span class="st">"Randomised"</span>, id_col <span class="op">=</span> <span class="st">"id"</span>, group_col <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">age</span> <span class="op">&gt;=</span> <span class="fl">5</span>,    <span class="st">"Age &gt;= 5 years"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">steroids</span> <span class="op">==</span> <span class="fl">0</span>, <span class="st">"Not on corticosteroids"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="relabelling-for-publication">Relabelling for publication<a class="anchor" aria-label="anchor" href="#relabelling-for-publication"></a>
-</h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span></span>
-<span>  <span class="va">cohort</span>,</span>
-<span>  step_labels  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Not on corticosteroids"</span> <span class="op">=</span> <span class="st">"No concurrent corticosteroid use"</span><span class="op">)</span>,</span>
-<span>  group_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"North America"</span> <span class="op">=</span> <span class="st">"N. America"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="na-cells-for-multi-source-studies">N/A cells for multi-source studies<a class="anchor" aria-label="anchor" href="#na-cells-for-multi-source-studies"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Weight criterion only applied to European centres</span></span>
-<span><span class="va">cohort_multi</span> <span class="op">&lt;-</span> <span class="va">cgd</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/new_cohort.html">new_cohort</a></span><span class="op">(</span><span class="st">"Randomised"</span>, id_col <span class="op">=</span> <span class="st">"id"</span>, group_col <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">age</span> <span class="op">&gt;=</span> <span class="fl">5</span>,                                  <span class="st">"Age &gt;= 5 years"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">&gt;=</span> <span class="fl">15</span> <span class="op">|</span> <span class="va">region</span> <span class="op">==</span> <span class="st">"North America"</span>,  <span class="st">"Weight &gt;= 15 kg"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/include_if.html">include_if</a></span><span class="op">(</span><span class="va">steroids</span> <span class="op">==</span> <span class="fl">0</span>,                             <span class="st">"Not on corticosteroids"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span></span>
-<span>  <span class="va">cohort_multi</span>,</span>
-<span>  na_cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>step <span class="op">=</span> <span class="st">"Weight &gt;= 15 kg"</span>, group <span class="op">=</span> <span class="st">"North America"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="inspecting-attrition">Inspecting attrition<a class="anchor" aria-label="anchor" href="#inspecting-attrition"></a>
-</h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/get_tracker.html">get_tracker</a></span><span class="op">(</span><span class="va">cohort</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # A tibble: 10 × 4</span></span>
 <span><span class="co">#&gt;    group         step                    n_remaining n_dropped</span></span>
@@ -192,21 +160,15 @@
 <span><span class="co">#&gt;  2 North America Randomised                       65         0</span></span>
 <span><span class="co">#&gt;  3 Europe        Age &gt;= 5 years                   62         1</span></span>
 <span><span class="co">#&gt;  ...</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="saving">Saving<a class="anchor" aria-label="anchor" href="#saving"></a>
-</h3>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span><span class="va">cohort</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/save_consort_plot.html">save_consort_plot</a></span><span class="op">(</span><span class="va">p</span>, <span class="st">"figures/consort"</span>, formats <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"png"</span>, <span class="st">"pdf"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The <code>scale</code> argument (default <code>0.75</code>) controls physical size without affecting proportions.</p>
 <hr>
 </div>
-</div>
 <div class="section level2">
-<h2 id="font-size-and-large-text">Font size and large text<a class="anchor" aria-label="anchor" href="#font-size-and-large-text"></a>
+<h2 id="saving">Saving<a class="anchor" aria-label="anchor" href="#saving"></a>
 </h2>
-<p>All font sizes scale with the <code>font_size</code> argument. Box dimensions recompute automatically so content never overflows, regardless of font size or label length. For very long step labels the title text wraps to fit the box width.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/consort_plot.html">consort_plot</a></span><span class="op">(</span><span class="va">cohort</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/save_consort_plot.html">save_consort_plot</a></span><span class="op">(</span><span class="va">p</span>, <span class="st">"figures/consort"</span>, formats <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"png"</span>, <span class="st">"pdf"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The <code>scale</code> argument (default <code>1</code>) multiplies the natural figure dimensions — increase it for a physically larger output without affecting proportions.</p>
 <hr>
 </div>
 <div class="section level2">
@@ -251,7 +213,7 @@
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/YOURNAME/GroupCONSORT/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/YOURNAME/GroupCONSORT/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://github.com/aasiyahrashan/GroupCONSORT/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/aasiyahrashan/GroupCONSORT/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
 <li><a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a></li>
 </ul>
 </div>
