@@ -137,7 +137,7 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
 #' Split a long CONSORT flowchart across multiple pages
 #'
 #' For diagrams that exceed a page height (e.g. many steps with many groups),
-#' this function renders the tracker as a list of [consort_grob] objects, one
+#' this function renders the tracker as a list of `consort_grob` objects, one
 #' per page. Steps are split greedily: each page holds as many steps as fit
 #' within `page_height_mm`. The last step of every page is repeated as the
 #' first step of the next page (overlap), so the reader always sees where

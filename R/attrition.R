@@ -1,5 +1,9 @@
 # Pipe-friendly cohort attrition tracking.
 #
+# Suppress R CMD check NOTE for .data pronoun used in dplyr expressions.
+#' @importFrom rlang .data
+NULL
+#
 # A `cohort` object is a list with four elements:
 #   $data      -- the filtered data frame at the current step
 #   $tracker   -- tibble(group, step, n_remaining, n_dropped)

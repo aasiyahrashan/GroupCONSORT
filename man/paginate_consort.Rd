@@ -29,7 +29,7 @@ A list of \code{consort_grob} objects. Each element also carries a
 }
 \description{
 For diagrams that exceed a page height (e.g. many steps with many groups),
-this function renders the tracker as a list of \link{consort_grob} objects, one
+this function renders the tracker as a list of \code{consort_grob} objects, one
 per page. Steps are split greedily: each page holds as many steps as fit
 within \code{page_height_mm}. The last step of every page is repeated as the
 first step of the next page (overlap), so the reader always sees where
