@@ -100,11 +100,17 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
   w_in <- ly$w_mm * scale / 25.4
   h_in <- ly$h_mm * scale / 25.4
 
+  # BUG FIX: The device is already opened at (w_in x h_in), which corresponds
+  # to (w_mm*scale x h_mm*scale) mm of physical space. The viewport must use
+  # the NATURAL (unscaled) mm dimensions so that grid's coordinate system
+  # maps 1:1 onto the device. Using scaled mm here would make the viewport
+  # larger than the device by a factor of `scale`, clipping content at the top
+  # and right for any scale > 1.
   draw_fn <- function() {
     grid::grid.newpage()
     vp <- grid::viewport(
-      width  = grid::unit(ly$w_mm * scale, "mm"),
-      height = grid::unit(ly$h_mm * scale, "mm"),
+      width  = grid::unit(ly$w_mm, "mm"),
+      height = grid::unit(ly$h_mm, "mm"),
       x = 0.5, y = 0.5
     )
     grid::pushViewport(vp)
@@ -258,7 +264,14 @@ auto_width_mm <- function(content_list, lay) {
   if (length(content_list) == 0) return(40)
   widths <- numeric(0)
   for (item in content_list) {
-    widths <- c(widths, grob_width_mm(item$title,    "bold",  lay))
+    # BUG FIX: only measure title width when title is non-empty.
+    # clean_label() can return "" for step names like "1." or "1_",
+    # and grob_width_mm("") returns 0 which is harmless, but the
+    # empty title still occupies one line_height_mm in box_height_mm.
+    # The guard here is defensive; the real fix is in box_height_mm
+    # and text_block_grob which now skip empty titles entirely.
+    if (nchar(item$title) > 0)
+      widths <- c(widths, grob_width_mm(item$title,    "bold",  lay))
     if (!is.null(item$n_line))
       widths <- c(widths, grob_width_mm(item$n_line, "bold",  lay))
     for (gl in item$group_lines)
@@ -282,16 +295,28 @@ grob_width_mm <- function(txt, fontface, lay) {
 wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
   avail_mm <- box_w_mm - 2 * lay$pad_x_mm
   purrr::map(content_list, function(item) {
-    tw <- grob_width_mm(item$title, "bold", lay)
-    item$title_wrapped <- if (tw > avail_mm + 0.5) {
-      mpc     <- tw / max(nchar(item$title), 1L)
-      wrap_at <- max(floor(avail_mm / mpc), 6L)
-      stringr::str_wrap(item$title, width = wrap_at)
+    # BUG FIX: clean_label() can return "" for step names that consist
+    # entirely of a numeric prefix (e.g. "1.", "1_"). Wrapping or
+    # measuring an empty string is harmless but the empty title must not
+    # consume a line slot in the box height or text block. We therefore
+    # normalise empty titles to "" and let box_height_mm / text_block_grob
+    # treat n_title_lines = 0 when the title is blank.
+    if (nchar(trimws(item$title)) == 0) {
+      item$title         <- ""
+      item$title_wrapped <- ""
+      item$n_title_lines <- 0L
     } else {
-      item$title
+      tw <- grob_width_mm(item$title, "bold", lay)
+      item$title_wrapped <- if (tw > avail_mm + 0.5) {
+        mpc     <- tw / max(nchar(item$title), 1L)
+        wrap_at <- max(floor(avail_mm / mpc), 6L)
+        stringr::str_wrap(item$title, width = wrap_at)
+      } else {
+        item$title
+      }
+      item$n_title_lines <- length(strsplit(item$title_wrapped, "\n",
+                                            fixed = TRUE)[[1]])
     }
-    item$n_title_lines <- length(strsplit(item$title_wrapped, "\n",
-                                          fixed = TRUE)[[1]])
     item$bh_mm <- box_height_mm(item, lay)
     item
   })
@@ -299,6 +324,10 @@ wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
 
 box_height_mm <- function(item, lay) {
   lh      <- lay$line_height_mm
+  # BUG FIX: n_title_lines is now 0 when the title is empty (set in
+  # wrap_and_measure_mm). Previously the fallback path here always
+  # computed >= 1 title line even for empty strings, inflating box height
+  # and misaligning text relative to the allocated space.
   n_title <- item$n_title_lines %||%
     length(strsplit(item$title_wrapped %||% item$title, "\n",
                     fixed = TRUE)[[1]])
@@ -458,14 +487,20 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
                          col = lay$col_line, lineheight = lay$lineheight)
   add <- function(g) grobs[[length(grobs) + 1L]] <<- g
 
-  # Title lines (bold) — uniform lh step each
-  title_lines <- strsplit(item$title_wrapped %||% item$title,
-                          "\n", fixed = TRUE)[[1]]
-  for (tl in title_lines) {
-    add(grid::textGrob(label = tl,
-                       x = u(x_left), y = u(cursor),
-                       just = c("left", "top"), gp = gp_bold))
-    cursor <- cursor - lh
+  # BUG FIX: skip empty titles entirely rather than rendering a blank line.
+  # clean_label() can return "" for step names that are purely numeric
+  # prefixes (e.g. "1.", "1_"). Previously an empty textGrob was still
+  # drawn and cursor was still advanced by lh, producing a phantom gap at
+  # the top of the box and pushing all subsequent text down by one line.
+  title_text <- item$title_wrapped %||% item$title
+  if (nchar(trimws(title_text)) > 0) {
+    title_lines <- strsplit(title_text, "\n", fixed = TRUE)[[1]]
+    for (tl in title_lines) {
+      add(grid::textGrob(label = tl,
+                         x = u(x_left), y = u(cursor),
+                         just = c("left", "top"), gp = gp_bold))
+      cursor <- cursor - lh
+    }
   }
 
   # Section gap once, only when body follows
@@ -525,8 +560,13 @@ recode_tracker <- function(tracker, step_labels, group_labels) {
 }
 
 clean_label <- function(x) {
-  x |>
+  cleaned <- x |>
     stringr::str_remove("^\\d+[_.\\-]\\s*") |>
     stringr::str_replace_all("[_.]", " ") |>
     stringr::str_to_sentence()
+  # BUG FIX: if the entire step name was a numeric prefix (e.g. "1.", "1_"),
+  # str_remove strips it and leaves "". Fall back to the original string so
+  # the box always has a non-empty title. The caller (wrap_and_measure_mm)
+  # further normalises empty titles to n_title_lines = 0 if needed.
+  if (nchar(trimws(cleaned)) == 0) x else cleaned
 }
