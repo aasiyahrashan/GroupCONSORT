@@ -23,6 +23,9 @@
 - [`new_cohort()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/new_cohort.md)
   : Create a cohort object and initialise the attrition tracker
 
+- [`paginate_consort()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/paginate_consort.md)
+  : Split a long CONSORT flowchart across multiple pages
+
 - [`prep_cgd_example()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/prep_cgd_example.md)
   :
 
@@ -31,6 +34,9 @@
 
 - [`print(`*`<cohort>`*`)`](https://aasiyahrashan.github.io/GroupCONSORT/reference/print.cohort.md)
   : Print method for cohort objects
+
+- [`save_consort_pages()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_pages.md)
+  : Save paginated CONSORT pages to PNG or PDF
 
 - [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md)
   : Save a CONSORT flowchart at content-fitting dimensions
