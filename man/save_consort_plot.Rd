@@ -4,22 +4,38 @@
 \alias{save_consort_plot}
 \title{Save a CONSORT flowchart at content-fitting dimensions}
 \usage{
-save_consort_plot(plot, path, formats = c("png", "pdf"), scale = 1, dpi = 300)
+save_consort_plot(
+  plot,
+  path,
+  formats = c("png", "pdf"),
+  scale = 1,
+  dpi = 300,
+  page_height_mm = 257
+)
 }
 \arguments{
 \item{plot}{A \code{consort_grob} from \code{\link[=consort_plot]{consort_plot()}}.}
 
-\item{path}{Output path without extension.}
+\item{path}{Output path \strong{without} extension.}
 
 \item{formats}{\code{"png"}, \code{"pdf"}, or both.}
 
 \item{scale}{Multiplier on natural mm dimensions. Default \code{1}.}
 
-\item{dpi}{PNG resolution.}
+\item{dpi}{PNG resolution. Default \code{300}.}
+
+\item{page_height_mm}{Height (mm) above which a pagination hint is shown.
+Default \code{257} (A4 with standard margins). Set \code{NULL} to suppress.}
 }
 \value{
 \code{plot}, invisibly.
 }
 \description{
-Save a CONSORT flowchart at content-fitting dimensions
+Opens a PNG or PDF device sized exactly to the diagram's natural dimensions
+(optionally scaled), then draws into it. This avoids the clipping that
+occurs when printing to a fixed-size RStudio plot pane.
+}
+\details{
+If the diagram height exceeds \code{page_height_mm}, a message is emitted
+suggesting \code{\link[=paginate_consort]{paginate_consort()}} + \code{\link[=save_consort_pages]{save_consort_pages()}}.
 }

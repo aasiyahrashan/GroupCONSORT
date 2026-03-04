@@ -12,7 +12,7 @@
 #' @param tracker A `cohort` object or a tracker tibble with columns `group`,
 #'   `step`, `n_remaining`, `n_dropped`.
 #' @param na_cells A data frame with columns `step` and `group` identifying
-#'   step–group combinations where the step did not apply (shown as "N/A").
+#'   step-group combinations where the step did not apply (shown as "N/A").
 #'   `NULL` (default) means no N/A cells.
 #' @param step_labels Named character vector renaming steps for display.
 #' @param group_labels Named character vector renaming groups for display.
@@ -21,7 +21,8 @@
 #' @param excl_width Width of exclusion boxes in mm. `NULL` = auto.
 #'
 #' @return A `consort_grob` (a `gTree`). Print it or pass to
-#'   [save_consort_plot()].
+#'   [save_consort_plot()]. If the diagram is taller than a standard page,
+#'   consider [paginate_consort()] + [save_consort_pages()] instead.
 #' @export
 consort_plot <- function(tracker,
                          na_cells     = NULL,
@@ -33,7 +34,6 @@ consort_plot <- function(tracker,
 
   if (inherits(tracker, "cohort")) tracker <- get_tracker(tracker)
   validate_tracker(tracker)
-  # Record which steps were explicitly renamed so clean_label() skips them.
   renamed_steps <- if (!is.null(step_labels)) unname(step_labels) else character(0)
 
   tracker <- recode_tracker(tracker, step_labels, group_labels)
@@ -85,27 +85,44 @@ print.consort_grob <- function(x, ...) {
 
 #' Save a CONSORT flowchart at content-fitting dimensions
 #'
+#' Opens a PNG or PDF device sized exactly to the diagram's natural dimensions
+#' (optionally scaled), then draws into it. This avoids the clipping that
+#' occurs when printing to a fixed-size RStudio plot pane.
+#'
+#' If the diagram height exceeds `page_height_mm`, a message is emitted
+#' suggesting [paginate_consort()] + [save_consort_pages()].
+#'
 #' @param plot A `consort_grob` from [consort_plot()].
-#' @param path Output path without extension.
+#' @param path Output path **without** extension.
 #' @param formats `"png"`, `"pdf"`, or both.
 #' @param scale Multiplier on natural mm dimensions. Default `1`.
-#' @param dpi PNG resolution.
+#' @param dpi PNG resolution. Default `300`.
+#' @param page_height_mm Height (mm) above which a pagination hint is shown.
+#'   Default `257` (A4 with standard margins). Set `NULL` to suppress.
 #' @return `plot`, invisibly.
 #' @export
 save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
-                              scale = 1, dpi = 300) {
+                              scale = 1, dpi = 300,
+                              page_height_mm = 257) {
   ly <- attr(plot, ".layout")
   if (is.null(ly)) stop("No layout metadata. Was this made by consort_plot()?")
+
+  if (!is.null(page_height_mm) && ly$h_mm > page_height_mm) {
+    message(
+      "Note: diagram height (", round(ly$h_mm), "mm) exceeds page_height_mm (",
+      round(page_height_mm), "mm). ",
+      "Consider paginate_consort() + save_consort_pages() for a multi-page layout."
+    )
+  }
 
   w_in <- ly$w_mm * scale / 25.4
   h_in <- ly$h_mm * scale / 25.4
 
-  # BUG FIX: The device is already opened at (w_in x h_in), which corresponds
-  # to (w_mm*scale x h_mm*scale) mm of physical space. The viewport must use
-  # the NATURAL (unscaled) mm dimensions so that grid's coordinate system
-  # maps 1:1 onto the device. Using scaled mm here would make the viewport
-  # larger than the device by a factor of `scale`, clipping content at the top
-  # and right for any scale > 1.
+  # The device is opened at (w_in x h_in), which already encodes the scale.
+  # The viewport must therefore use the NATURAL (unscaled) mm coordinates so
+  # grid's unit system maps 1:1 onto the device. Using scaled mm here would
+  # make the viewport `scale` times larger than the device, clipping everything
+  # above and to the right for scale > 1.
   draw_fn <- function() {
     grid::grid.newpage()
     vp <- grid::viewport(
@@ -136,19 +153,236 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
   invisible(plot)
 }
 
+#' Split a long CONSORT flowchart across multiple pages
+#'
+#' For diagrams that exceed a page height (e.g. many steps with many groups),
+#' this function renders the tracker as a list of [consort_grob] objects, one
+#' per page. Steps are split greedily: each page holds as many steps as fit
+#' within `page_height_mm`. The last step of every page is repeated as the
+#' first step of the next page (overlap), so the reader always sees where
+#' each page continues from.
+#'
+#' Save the result with [save_consort_pages()].
+#'
+#' @param tracker A `cohort` object or tracker tibble (same as [consort_plot()]).
+#' @param page_height_mm Usable page height in mm. Default `257` (A4 with
+#'   standard top/bottom margins). For US Letter use approximately `241`.
+#' @param na_cells,step_labels,group_labels,font_size,box_width,excl_width
+#'   Passed through to [consort_plot()] for each page.
+#'
+#' @return A list of `consort_grob` objects. Each element also carries a
+#'   `.page_info` attribute: `list(page = i, n_pages = n, steps = <chr>)`.
+#'
+#' @examples
+#' \dontrun{
+#' pages <- paginate_consort(cohort, page_height_mm = 257)
+#' save_consort_pages(pages, "output/consort")
+#' }
+#'
+#' @export
+paginate_consort <- function(tracker,
+                             page_height_mm = 257,
+                             na_cells       = NULL,
+                             step_labels    = NULL,
+                             group_labels   = NULL,
+                             font_size      = 1,
+                             box_width      = NULL,
+                             excl_width     = NULL) {
+
+  if (inherits(tracker, "cohort")) tracker <- get_tracker(tracker)
+  validate_tracker(tracker)
+
+  # Apply label recoding and NA-flagging up front so step names are stable
+  # for subsetting, and so we don't double-recode on each page.
+  renamed_steps <- if (!is.null(step_labels)) unname(step_labels) else character(0)
+  tracker <- recode_tracker(tracker, step_labels, group_labels)
+  tracker <- flag_na_cells(tracker, na_cells)
+
+  steps    <- unique(tracker$step)
+  n_steps  <- length(steps)
+  groups   <- unique(tracker$group)
+  n_groups <- length(groups)
+
+  lay <- layout_params(font_size)
+
+  # Build content for ALL steps to measure heights consistently.
+  mc_all <- build_main_content(tracker, steps, n_groups, renamed_steps)
+  ec_all <- build_excl_content(tracker, steps, n_steps, n_groups)
+
+  bw <- box_width  %||% auto_width_mm(mc_all, lay)
+  ew <- excl_width %||% auto_width_mm(ec_all, lay)
+
+  mc_all <- wrap_and_measure_mm(mc_all, bw, lay)
+  ec_all <- wrap_and_measure_mm(ec_all, ew, lay)
+
+  bh_main <- vapply(mc_all, `[[`, numeric(1), "bh_mm")
+  bh_excl <- if (length(ec_all) > 0)
+    vapply(ec_all, `[[`, numeric(1), "bh_mm") else numeric(0)
+
+  # Gap between step i and step i+1 (1-indexed, length n_steps - 1).
+  gap_between <- vapply(seq_len(n_steps - 1), function(i) {
+    ebox_h <- if (i <= length(bh_excl)) bh_excl[i] else 0
+    max(lay$gap_mm, ebox_h + lay$gap_mm * 0.4)
+  }, numeric(1))
+
+  # Usable interior height (subtract top + bottom margin).
+  page_content_h <- page_height_mm - 2 * lay$margin_mm
+
+  compute_page_h <- function(step_indices) {
+    n <- length(step_indices)
+    if (n == 0) return(0)
+    h <- sum(bh_main[step_indices])
+    for (k in seq_len(n - 1)) h <- h + gap_between[step_indices[k]]
+    h
+  }
+
+  # Greedy page-break: extend each page as far as possible within the height
+  # budget, then overlap by one step so the reader sees continuity.
+  page_ranges <- list()
+  start <- 1L
+  while (start <= n_steps) {
+    end <- start  # always include at least the starting step
+    while (end < n_steps &&
+           compute_page_h(seq(start, end + 1L)) <= page_content_h) {
+      end <- end + 1L
+    }
+    page_ranges[[length(page_ranges) + 1L]] <- c(start, end)
+    if (end >= n_steps) break
+    start <- end  # overlap: last step of this page = first of next
+  }
+
+  n_pages <- length(page_ranges)
+
+  if (n_pages == 1L) {
+    message(
+      "Diagram fits on one page (height ~",
+      round(compute_page_h(seq_len(n_steps)) + 2 * lay$margin_mm),
+      "mm <= ", round(page_height_mm), "mm). ",
+      "You can use consort_plot() + save_consort_plot() directly."
+    )
+  }
+
+  # Render each page by subsetting the (already recoded) tracker.
+  # Labels and na_cells are already baked in -- pass NULL to consort_plot()
+  # to avoid double-processing.
+  pages <- lapply(seq_len(n_pages), function(p) {
+    rng        <- page_ranges[[p]]
+    page_steps <- steps[seq(rng[1], rng[2])]
+    sub_tracker <- tracker[tracker$step %in% page_steps, , drop = FALSE]
+    sub_tracker <- sub_tracker[order(match(sub_tracker$step, page_steps)), ]
+
+    grob <- consort_plot(
+      tracker      = sub_tracker,
+      na_cells     = NULL,
+      step_labels  = NULL,
+      group_labels = NULL,
+      font_size    = font_size,
+      box_width    = box_width,
+      excl_width   = excl_width
+    )
+
+    attr(grob, ".page_info") <- list(
+      page    = p,
+      n_pages = n_pages,
+      steps   = page_steps
+    )
+    grob
+  })
+
+  pages
+}
+
+#' Save paginated CONSORT pages to PNG or PDF
+#'
+#' Companion to [paginate_consort()]. Saves each page as either:
+#' - **PDF**: a single multi-page file (`path.pdf`). All pages share the
+#'   dimensions of the largest page (PDF does not support variable page sizes
+#'   within one file via `cairo_pdf`).
+#' - **PNG**: one file per page (`path_p01.png`, `path_p02.png`, ...).
+#'   Each PNG is sized to its own content, so pages may differ in height
+#'   (e.g. the last page often has fewer steps).
+#'
+#' @param pages A list of `consort_grob` objects from [paginate_consort()].
+#' @param path Output path **without** extension.
+#' @param formats `"png"`, `"pdf"`, or both.
+#' @param scale Multiplier on natural mm dimensions. Default `1`.
+#' @param dpi PNG resolution. Default `300`.
+#'
+#' @return `pages`, invisibly.
+#' @export
+save_consort_pages <- function(pages, path, formats = c("png", "pdf"),
+                               scale = 1, dpi = 300) {
+  if (!is.list(pages) || length(pages) == 0)
+    stop("`pages` must be a non-empty list from paginate_consort().")
+
+  layouts <- lapply(pages, function(p) {
+    ly <- attr(p, ".layout")
+    if (is.null(ly))
+      stop("A page grob is missing layout metadata. Was it made by paginate_consort()?")
+    ly
+  })
+
+  for (fmt in formats) {
+
+    if (fmt == "pdf") {
+      # cairo_pdf does not support variable page sizes within one file,
+      # so open the device at the maximum dimensions and centre each page.
+      max_w_in <- max(vapply(layouts, `[[`, numeric(1), "w_mm")) * scale / 25.4
+      max_h_in <- max(vapply(layouts, `[[`, numeric(1), "h_mm")) * scale / 25.4
+      f <- paste0(path, ".pdf")
+      grDevices::cairo_pdf(f, width = max_w_in, height = max_h_in,
+                           onefile = TRUE, bg = "transparent")
+      for (i in seq_along(pages)) {
+        ly <- layouts[[i]]
+        grid::grid.newpage()
+        vp <- grid::viewport(
+          width  = grid::unit(ly$w_mm, "mm"),
+          height = grid::unit(ly$h_mm, "mm"),
+          x = 0.5, y = 0.5
+        )
+        grid::pushViewport(vp)
+        grid::grid.draw(pages[[i]])
+        grid::popViewport()
+      }
+      grDevices::dev.off()
+      message("Saved: ", f, " (", length(pages), " pages)")
+
+    } else if (fmt == "png") {
+      n_digits <- nchar(as.character(length(pages)))
+      for (i in seq_along(pages)) {
+        ly   <- layouts[[i]]
+        w_in <- ly$w_mm * scale / 25.4
+        h_in <- ly$h_mm * scale / 25.4
+        page_tag <- formatC(i, width = n_digits, flag = "0")
+        f <- paste0(path, "_p", page_tag, ".png")
+        grDevices::png(f, width = w_in, height = h_in,
+                       units = "in", res = dpi, bg = "transparent")
+        grid::grid.newpage()
+        vp <- grid::viewport(
+          width  = grid::unit(ly$w_mm, "mm"),
+          height = grid::unit(ly$h_mm, "mm"),
+          x = 0.5, y = 0.5
+        )
+        grid::pushViewport(vp)
+        grid::grid.draw(pages[[i]])
+        grid::popViewport()
+        grDevices::dev.off()
+        message("Saved: ", f)
+      }
+    }
+  }
+
+  invisible(pages)
+}
+
 
 # =========================================================================
 # Layout params
-#
-# line_height_mm: measured from a 2-line plain reference grob (baseline to
-# baseline). Multiplied by 1.5 for comfortable leading that accommodates
-# bold lines without them appearing cramped against the following plain line.
 # =========================================================================
 
 layout_params <- function(fs) {
   fs_pt <- 8 * fs
 
-  # Baseline-to-baseline distance at this font size with lineheight=1.3
   g2 <- grid::textGrob(
     "Ag\nAg",
     gp = grid::gpar(fontsize = fs_pt, fontface = "plain", lineheight = 1.3)
@@ -157,7 +391,7 @@ layout_params <- function(fs) {
 
   list(
     fs_pt          = fs_pt,
-    lineheight     = 1.3,         # must match the reference grob
+    lineheight     = 1.3,
     line_height_mm = lh,
     section_gap_mm = 0,
     pad_x_mm       = 2.5 * fs,
@@ -207,8 +441,6 @@ build_main_content <- function(tracker, steps, n_groups,
   purrr::map(steps, function(s) {
     rows  <- dplyr::filter(tracker, .data$step == s)
     total <- sum(rows$n_remaining, na.rm = TRUE)
-    # Only apply clean_label to steps NOT explicitly renamed by the user
-    # via step_labels, to avoid clobbering user-supplied display names.
     title <- if (s %in% renamed_steps) s else clean_label(s)
     n_line <- if (n_groups > 1)
       paste0("Total: n = ", format(total, big.mark = ","))
@@ -264,18 +496,12 @@ auto_width_mm <- function(content_list, lay) {
   if (length(content_list) == 0) return(40)
   widths <- numeric(0)
   for (item in content_list) {
-    # BUG FIX: only measure title width when title is non-empty.
-    # clean_label() can return "" for step names like "1." or "1_",
-    # and grob_width_mm("") returns 0 which is harmless, but the
-    # empty title still occupies one line_height_mm in box_height_mm.
-    # The guard here is defensive; the real fix is in box_height_mm
-    # and text_block_grob which now skip empty titles entirely.
     if (nchar(item$title) > 0)
-      widths <- c(widths, grob_width_mm(item$title,    "bold",  lay))
+      widths <- c(widths, grob_width_mm(item$title, "bold", lay))
     if (!is.null(item$n_line))
-      widths <- c(widths, grob_width_mm(item$n_line, "bold",  lay))
+      widths <- c(widths, grob_width_mm(item$n_line, "bold", lay))
     for (gl in item$group_lines)
-      widths <- c(widths, grob_width_mm(gl,          "plain", lay))
+      widths <- c(widths, grob_width_mm(gl, "plain", lay))
   }
   w <- max(widths, na.rm = TRUE) + 2 * lay$pad_x_mm + 2
   min(max(w, 25), 150)
@@ -295,12 +521,8 @@ grob_width_mm <- function(txt, fontface, lay) {
 wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
   avail_mm <- box_w_mm - 2 * lay$pad_x_mm
   purrr::map(content_list, function(item) {
-    # BUG FIX: clean_label() can return "" for step names that consist
-    # entirely of a numeric prefix (e.g. "1.", "1_"). Wrapping or
-    # measuring an empty string is harmless but the empty title must not
-    # consume a line slot in the box height or text block. We therefore
-    # normalise empty titles to "" and let box_height_mm / text_block_grob
-    # treat n_title_lines = 0 when the title is blank.
+    # Empty title (e.g. from clean_label stripping a pure numeric prefix):
+    # treat as zero title lines so no phantom gap appears in the box.
     if (nchar(trimws(item$title)) == 0) {
       item$title         <- ""
       item$title_wrapped <- ""
@@ -324,10 +546,7 @@ wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
 
 box_height_mm <- function(item, lay) {
   lh      <- lay$line_height_mm
-  # BUG FIX: n_title_lines is now 0 when the title is empty (set in
-  # wrap_and_measure_mm). Previously the fallback path here always
-  # computed >= 1 title line even for empty strings, inflating box height
-  # and misaligning text relative to the allocated space.
+  # n_title_lines is 0 for empty titles (set in wrap_and_measure_mm).
   n_title <- item$n_title_lines %||%
     length(strsplit(item$title_wrapped %||% item$title, "\n",
                     fixed = TRUE)[[1]])
@@ -487,11 +706,10 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
                          col = lay$col_line, lineheight = lay$lineheight)
   add <- function(g) grobs[[length(grobs) + 1L]] <<- g
 
-  # BUG FIX: skip empty titles entirely rather than rendering a blank line.
-  # clean_label() can return "" for step names that are purely numeric
-  # prefixes (e.g. "1.", "1_"). Previously an empty textGrob was still
-  # drawn and cursor was still advanced by lh, producing a phantom gap at
-  # the top of the box and pushing all subsequent text down by one line.
+  # Skip empty titles: do not render a blank line or advance the cursor.
+  # clean_label() can produce "" for step names that are pure numeric prefixes
+  # (e.g. "1.", "1_"). Previously the cursor still advanced by lh, producing
+  # a phantom gap at the top of the box.
   title_text <- item$title_wrapped %||% item$title
   if (nchar(trimws(title_text)) > 0) {
     title_lines <- strsplit(title_text, "\n", fixed = TRUE)[[1]]
@@ -503,12 +721,10 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
     }
   }
 
-  # Section gap once, only when body follows
   has_body <- (!is.null(item$n_line) && nchar(item$n_line) > 0) ||
     length(item$group_lines) > 0
   if (has_body) cursor <- cursor - lay$section_gap_mm
 
-  # n_line
   if (!is.null(item$n_line) && nchar(item$n_line) > 0) {
     add(grid::textGrob(label = item$n_line,
                        x = u(x_left), y = u(cursor),
@@ -517,7 +733,6 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
     cursor <- cursor - lh
   }
 
-  # Group lines — uniform lh step each
   for (gl in item$group_lines) {
     add(grid::textGrob(label = gl,
                        x = u(x_left), y = u(cursor),
@@ -564,9 +779,7 @@ clean_label <- function(x) {
     stringr::str_remove("^\\d+[_.\\-]\\s*") |>
     stringr::str_replace_all("[_.]", " ") |>
     stringr::str_to_sentence()
-  # BUG FIX: if the entire step name was a numeric prefix (e.g. "1.", "1_"),
-  # str_remove strips it and leaves "". Fall back to the original string so
-  # the box always has a non-empty title. The caller (wrap_and_measure_mm)
-  # further normalises empty titles to n_title_lines = 0 if needed.
+  # Fall back to original if cleaning produces an empty string
+  # (e.g. step name was "1." or "1_" -- purely a numeric prefix).
   if (nchar(trimws(cleaned)) == 0) x else cleaned
 }

@@ -19,7 +19,7 @@ consort_plot(
 \code{step}, \code{n_remaining}, \code{n_dropped}.}
 
 \item{na_cells}{A data frame with columns \code{step} and \code{group} identifying
-step–group combinations where the step did not apply (shown as "N/A").
+step-group combinations where the step did not apply (shown as "N/A").
 \code{NULL} (default) means no N/A cells.}
 
 \item{step_labels}{Named character vector renaming steps for display.}
@@ -34,7 +34,8 @@ step–group combinations where the step did not apply (shown as "N/A").
 }
 \value{
 A \code{consort_grob} (a \code{gTree}). Print it or pass to
-\code{\link[=save_consort_plot]{save_consort_plot()}}.
+\code{\link[=save_consort_plot]{save_consort_plot()}}. If the diagram is taller than a standard page,
+consider \code{\link[=paginate_consort]{paginate_consort()}} + \code{\link[=save_consort_pages]{save_consort_pages()}} instead.
 }
 \description{
 Draw a publication-quality CONSORT flowchart
