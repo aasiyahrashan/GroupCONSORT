@@ -53,7 +53,3 @@ consort_plot(
 
 A `consort_grob` (a `gTree`). Print it or pass to
 [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md).
-If the diagram is taller than a standard page, consider
-[`paginate_consort()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/paginate_consort.md) +
-[`save_consort_pages()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_pages.md)
-instead.
