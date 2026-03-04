@@ -34,8 +34,7 @@ step-group combinations where the step did not apply (shown as "N/A").
 }
 \value{
 A \code{consort_grob} (a \code{gTree}). Print it or pass to
-\code{\link[=save_consort_plot]{save_consort_plot()}}. If the diagram is taller than a standard page,
-consider \code{\link[=paginate_consort]{paginate_consort()}} + \code{\link[=save_consort_pages]{save_consort_pages()}} instead.
+\code{\link[=save_consort_plot]{save_consort_plot()}}.
 }
 \description{
 Draw a publication-quality CONSORT flowchart

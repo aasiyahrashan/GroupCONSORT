@@ -21,8 +21,7 @@
 #' @param excl_width Width of exclusion boxes in mm. `NULL` = auto.
 #'
 #' @return A `consort_grob` (a `gTree`). Print it or pass to
-#'   [save_consort_plot()]. If the diagram is taller than a standard page,
-#'   consider [paginate_consort()] + [save_consort_pages()] instead.
+#'   [save_consort_plot()].
 #' @export
 consort_plot <- function(tracker,
                          na_cells     = NULL,
@@ -34,6 +33,7 @@ consort_plot <- function(tracker,
 
   if (inherits(tracker, "cohort")) tracker <- get_tracker(tracker)
   validate_tracker(tracker)
+  # Record which steps were explicitly renamed so clean_label() skips them.
   renamed_steps <- if (!is.null(step_labels)) unname(step_labels) else character(0)
 
   tracker <- recode_tracker(tracker, step_labels, group_labels)
@@ -85,44 +85,25 @@ print.consort_grob <- function(x, ...) {
 
 #' Save a CONSORT flowchart at content-fitting dimensions
 #'
-#' Opens a PNG or PDF device sized exactly to the diagram's natural dimensions
-#' (optionally scaled), then draws into it. This avoids the clipping that
-#' occurs when printing to a fixed-size RStudio plot pane.
-#'
-#' If the diagram height exceeds `page_height_mm`, a message is emitted
-#' suggesting [paginate_consort()] + [save_consort_pages()].
-#'
 #' @param plot A `consort_grob` from [consort_plot()].
-#' @param path Output path **without** extension.
+#' @param path Output path without extension.
 #' @param formats `"png"`, `"pdf"`, or both.
 #' @param scale Multiplier on natural mm dimensions. Default `1`.
-#' @param dpi PNG resolution. Default `300`.
-#' @param page_height_mm Height (mm) above which a pagination hint is shown.
-#'   Default `257` (A4 with standard margins). Set `NULL` to suppress.
+#' @param dpi PNG resolution.
 #' @return `plot`, invisibly.
 #' @export
 save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
-                              scale = 1, dpi = 300,
-                              page_height_mm = 257) {
+                              scale = 1, dpi = 300) {
   ly <- attr(plot, ".layout")
   if (is.null(ly)) stop("No layout metadata. Was this made by consort_plot()?")
-
-  if (!is.null(page_height_mm) && ly$h_mm > page_height_mm) {
-    message(
-      "Note: diagram height (", round(ly$h_mm), "mm) exceeds page_height_mm (",
-      round(page_height_mm), "mm). ",
-      "Consider paginate_consort() + save_consort_pages() for a multi-page layout."
-    )
-  }
 
   w_in <- ly$w_mm * scale / 25.4
   h_in <- ly$h_mm * scale / 25.4
 
-  # The device is opened at (w_in x h_in), which already encodes the scale.
-  # The viewport must therefore use the NATURAL (unscaled) mm coordinates so
-  # grid's unit system maps 1:1 onto the device. Using scaled mm here would
-  # make the viewport `scale` times larger than the device, clipping everything
-  # above and to the right for scale > 1.
+  # FIX: viewport uses natural (unscaled) mm so grid coordinates map 1:1 onto
+  # the device. The original code used ly$w_mm * scale and ly$h_mm * scale
+  # here, making the viewport `scale` times larger than the device and
+  # clipping the top and right of the diagram for any scale > 1.
   draw_fn <- function() {
     grid::grid.newpage()
     vp <- grid::viewport(
@@ -225,7 +206,6 @@ paginate_consort <- function(tracker,
     max(lay$gap_mm, ebox_h + lay$gap_mm * 0.4)
   }, numeric(1))
 
-  # Usable interior height (subtract top + bottom margin).
   page_content_h <- page_height_mm - 2 * lay$margin_mm
 
   compute_page_h <- function(step_indices) {
@@ -241,7 +221,7 @@ paginate_consort <- function(tracker,
   page_ranges <- list()
   start <- 1L
   while (start <= n_steps) {
-    end <- start  # always include at least the starting step
+    end <- start
     while (end < n_steps &&
            compute_page_h(seq(start, end + 1L)) <= page_content_h) {
       end <- end + 1L
@@ -378,11 +358,16 @@ save_consort_pages <- function(pages, path, formats = c("png", "pdf"),
 
 # =========================================================================
 # Layout params
+#
+# line_height_mm: measured from a 2-line plain reference grob (baseline to
+# baseline). Multiplied by 1.5 for comfortable leading that accommodates
+# bold lines without them appearing cramped against the following plain line.
 # =========================================================================
 
 layout_params <- function(fs) {
   fs_pt <- 8 * fs
 
+  # Baseline-to-baseline distance at this font size with lineheight=1.3
   g2 <- grid::textGrob(
     "Ag\nAg",
     gp = grid::gpar(fontsize = fs_pt, fontface = "plain", lineheight = 1.3)
@@ -391,7 +376,7 @@ layout_params <- function(fs) {
 
   list(
     fs_pt          = fs_pt,
-    lineheight     = 1.3,
+    lineheight     = 1.3,         # must match the reference grob
     line_height_mm = lh,
     section_gap_mm = 0,
     pad_x_mm       = 2.5 * fs,
@@ -441,6 +426,8 @@ build_main_content <- function(tracker, steps, n_groups,
   purrr::map(steps, function(s) {
     rows  <- dplyr::filter(tracker, .data$step == s)
     total <- sum(rows$n_remaining, na.rm = TRUE)
+    # Only apply clean_label to steps NOT explicitly renamed by the user
+    # via step_labels, to avoid clobbering user-supplied display names.
     title <- if (s %in% renamed_steps) s else clean_label(s)
     n_line <- if (n_groups > 1)
       paste0("Total: n = ", format(total, big.mark = ","))
@@ -496,12 +483,11 @@ auto_width_mm <- function(content_list, lay) {
   if (length(content_list) == 0) return(40)
   widths <- numeric(0)
   for (item in content_list) {
-    if (nchar(item$title) > 0)
-      widths <- c(widths, grob_width_mm(item$title, "bold", lay))
+    widths <- c(widths, grob_width_mm(item$title,    "bold",  lay))
     if (!is.null(item$n_line))
-      widths <- c(widths, grob_width_mm(item$n_line, "bold", lay))
+      widths <- c(widths, grob_width_mm(item$n_line, "bold",  lay))
     for (gl in item$group_lines)
-      widths <- c(widths, grob_width_mm(gl, "plain", lay))
+      widths <- c(widths, grob_width_mm(gl,          "plain", lay))
   }
   w <- max(widths, na.rm = TRUE) + 2 * lay$pad_x_mm + 2
   min(max(w, 25), 150)
@@ -521,24 +507,16 @@ grob_width_mm <- function(txt, fontface, lay) {
 wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
   avail_mm <- box_w_mm - 2 * lay$pad_x_mm
   purrr::map(content_list, function(item) {
-    # Empty title (e.g. from clean_label stripping a pure numeric prefix):
-    # treat as zero title lines so no phantom gap appears in the box.
-    if (nchar(trimws(item$title)) == 0) {
-      item$title         <- ""
-      item$title_wrapped <- ""
-      item$n_title_lines <- 0L
+    tw <- grob_width_mm(item$title, "bold", lay)
+    item$title_wrapped <- if (tw > avail_mm + 0.5) {
+      mpc     <- tw / max(nchar(item$title), 1L)
+      wrap_at <- max(floor(avail_mm / mpc), 6L)
+      stringr::str_wrap(item$title, width = wrap_at)
     } else {
-      tw <- grob_width_mm(item$title, "bold", lay)
-      item$title_wrapped <- if (tw > avail_mm + 0.5) {
-        mpc     <- tw / max(nchar(item$title), 1L)
-        wrap_at <- max(floor(avail_mm / mpc), 6L)
-        stringr::str_wrap(item$title, width = wrap_at)
-      } else {
-        item$title
-      }
-      item$n_title_lines <- length(strsplit(item$title_wrapped, "\n",
-                                            fixed = TRUE)[[1]])
+      item$title
     }
+    item$n_title_lines <- length(strsplit(item$title_wrapped, "\n",
+                                          fixed = TRUE)[[1]])
     item$bh_mm <- box_height_mm(item, lay)
     item
   })
@@ -546,7 +524,6 @@ wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
 
 box_height_mm <- function(item, lay) {
   lh      <- lay$line_height_mm
-  # n_title_lines is 0 for empty titles (set in wrap_and_measure_mm).
   n_title <- item$n_title_lines %||%
     length(strsplit(item$title_wrapped %||% item$title, "\n",
                     fixed = TRUE)[[1]])
@@ -706,25 +683,22 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
                          col = lay$col_line, lineheight = lay$lineheight)
   add <- function(g) grobs[[length(grobs) + 1L]] <<- g
 
-  # Skip empty titles: do not render a blank line or advance the cursor.
-  # clean_label() can produce "" for step names that are pure numeric prefixes
-  # (e.g. "1.", "1_"). Previously the cursor still advanced by lh, producing
-  # a phantom gap at the top of the box.
-  title_text <- item$title_wrapped %||% item$title
-  if (nchar(trimws(title_text)) > 0) {
-    title_lines <- strsplit(title_text, "\n", fixed = TRUE)[[1]]
-    for (tl in title_lines) {
-      add(grid::textGrob(label = tl,
-                         x = u(x_left), y = u(cursor),
-                         just = c("left", "top"), gp = gp_bold))
-      cursor <- cursor - lh
-    }
+  # Title lines (bold) — uniform lh step each
+  title_lines <- strsplit(item$title_wrapped %||% item$title,
+                          "\n", fixed = TRUE)[[1]]
+  for (tl in title_lines) {
+    add(grid::textGrob(label = tl,
+                       x = u(x_left), y = u(cursor),
+                       just = c("left", "top"), gp = gp_bold))
+    cursor <- cursor - lh
   }
 
+  # Section gap once, only when body follows
   has_body <- (!is.null(item$n_line) && nchar(item$n_line) > 0) ||
     length(item$group_lines) > 0
   if (has_body) cursor <- cursor - lay$section_gap_mm
 
+  # n_line
   if (!is.null(item$n_line) && nchar(item$n_line) > 0) {
     add(grid::textGrob(label = item$n_line,
                        x = u(x_left), y = u(cursor),
@@ -733,6 +707,7 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
     cursor <- cursor - lh
   }
 
+  # Group lines — uniform lh step each
   for (gl in item$group_lines) {
     add(grid::textGrob(label = gl,
                        x = u(x_left), y = u(cursor),
@@ -775,11 +750,8 @@ recode_tracker <- function(tracker, step_labels, group_labels) {
 }
 
 clean_label <- function(x) {
-  cleaned <- x |>
+  x |>
     stringr::str_remove("^\\d+[_.\\-]\\s*") |>
     stringr::str_replace_all("[_.]", " ") |>
     stringr::str_to_sentence()
-  # Fall back to original if cleaning produces an empty string
-  # (e.g. step name was "1." or "1_" -- purely a numeric prefix).
-  if (nchar(trimws(cleaned)) == 0) x else cleaned
 }
