@@ -237,7 +237,7 @@ get_tracker(cohort_bmi)
 
 `save_consort_plot()` computes figure dimensions from the plot content so
 text and boxes stay consistently sized regardless of how many steps or groups
-there are. Figures are saved with a transparent background.
+there are.
 
 ```{r save, eval = FALSE}
 p <- consort_plot(cohort)

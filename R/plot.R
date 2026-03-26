@@ -120,12 +120,11 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
     f <- paste0(path, ".", fmt)
     if (fmt == "png") {
       grDevices::png(f, width = w_in, height = h_in,
-                     units = "in", res = dpi, bg = "transparent")
+                     units = "in", res = dpi)
       draw_fn()
       grDevices::dev.off()
     } else if (fmt == "pdf") {
-      grDevices::cairo_pdf(f, width = w_in, height = h_in,
-                           bg = "transparent")
+      grDevices::cairo_pdf(f, width = w_in, height = h_in)
       draw_fn()
       grDevices::dev.off()
     }
@@ -311,7 +310,7 @@ save_consort_pages <- function(pages, path, formats = c("png", "pdf"),
       max_h_in <- max(vapply(layouts, `[[`, numeric(1), "h_mm")) * scale / 25.4
       f <- paste0(path, ".pdf")
       grDevices::cairo_pdf(f, width = max_w_in, height = max_h_in,
-                           onefile = TRUE, bg = "transparent")
+                           onefile = TRUE)
       for (i in seq_along(pages)) {
         ly <- layouts[[i]]
         grid::grid.newpage()
@@ -336,7 +335,7 @@ save_consort_pages <- function(pages, path, formats = c("png", "pdf"),
         page_tag <- formatC(i, width = n_digits, flag = "0")
         f <- paste0(path, "_p", page_tag, ".png")
         grDevices::png(f, width = w_in, height = h_in,
-                       units = "in", res = dpi, bg = "transparent")
+                       units = "in", res = dpi)
         grid::grid.newpage()
         vp <- grid::viewport(
           width  = grid::unit(ly$w_mm, "mm"),
