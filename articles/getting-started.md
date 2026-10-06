@@ -16,6 +16,7 @@ reduces it to one row per patient and adds a `region` column (North
 America / Europe).
 
 ``` r
+
 cgd <- prep_cgd_example()
 glimpse(cgd)
 #> Rows: 128
@@ -42,6 +43,7 @@ then pipe
 calls. The condition is any ordinary dplyr filter expression.
 
 ``` r
+
 cohort <- cgd |>
   new_cohort(label = "Randomised", id_col = "id", group_col = "region") |>
   include_if(age >= 5,           "Age >= 5 years") |>
@@ -59,6 +61,7 @@ returns the underlying tibble — one row per group × step, recording how
 many patients remain and how many were dropped.
 
 ``` r
+
 get_tracker(cohort)
 #> # A tibble: 10 × 4
 #>    group         step                    n_remaining n_dropped
@@ -79,6 +82,7 @@ get_tracker(cohort)
 returns the filtered data frame ready for analysis.
 
 ``` r
+
 nrow(get_data(cohort))
 #> [1] 108
 ```
@@ -94,6 +98,7 @@ This pattern ensures the figure is never stretched or compressed by
 knitr’s default sizing.
 
 ``` r
+
 p <- consort_plot(cohort)
 knitr::include_graphics(save_fig(p, "elig"))
 #> Saved: elig.png
@@ -108,6 +113,7 @@ Rename steps and groups for display without touching the tracker. Only
 the labels you want to change need to be listed.
 
 ``` r
+
 p <- consort_plot(
   cohort,
   step_labels  = c("Not on corticosteroids" = "No concurrent corticosteroid use"),
@@ -127,6 +133,7 @@ all groups. Pass a data frame with `step` and `group` columns to
 always show totals.
 
 ``` r
+
 cohort_multi <- cgd |>
   new_cohort("Randomised", id_col = "id", group_col = "region") |>
   include_if(age >= 5,                                  "Age >= 5 years") |>
@@ -161,6 +168,7 @@ directly to
 [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md).
 
 ``` r
+
 # Europe: both steps applied
 tracker_eu <- cgd |>
   filter(region == "Europe") |>
@@ -191,6 +199,7 @@ datasets, with N/A where a step did not apply.](merge.png)
 Set `group_col = NULL` for studies without a meaningful site grouping.
 
 ``` r
+
 p <- cgd |>
   new_cohort("Randomised", id_col = "id", group_col = NULL) |>
   include_if(age >= 5,           "Age >= 5 years") |>
@@ -210,6 +219,7 @@ Complex criteria can be computed separately and joined back in before
 piping.
 
 ``` r
+
 xlinked_ids <- cgd |> filter(inherit == "X-linked") |> pull(id)
 
 cgd |>
@@ -240,6 +250,7 @@ handles this by grouping on `id_col` before filtering, so the
 aggregation is always patient-scoped.
 
 ``` r
+
 # prep_cgd_example() already has one row per patient, so we simulate a
 # multi-row-per-patient dataset by duplicating with a fake admission time.
 set.seed(42)
@@ -286,6 +297,7 @@ you need to derive a column — via a data.table join, `mutate()`, or any
 other operation — that cannot be expressed as a simple filter condition.
 
 ``` r
+
 cohort_bmi <- cgd |>
   new_cohort("Randomised", id_col = "id", group_col = "region") |>
   include_if(age >= 5, "Age >= 5 years")
@@ -316,6 +328,7 @@ computes figure dimensions from the plot content so text and boxes stay
 consistently sized regardless of how many steps or groups there are.
 
 ``` r
+
 p <- consort_plot(cohort)
 save_consort_plot(p, "consort_flowchart", formats = c("png", "pdf"))
 ```
@@ -332,6 +345,7 @@ These chunks verify the layout holds up under edge cases — many groups,
 many steps, long labels, and large font.
 
 ``` r
+
 p <- df_many |>
   new_cohort("Screened", id_col = "id", group_col = "site") |>
   include_if(age >= 18, "Age >= 18 years") |>
@@ -344,6 +358,7 @@ knitr::include_graphics(save_fig(p, "six_groups"))
 ![Stress test: 6 groups, 2 steps.](six_groups.png)
 
 ``` r
+
 p <- df_many |>
   dplyr::mutate(site = ifelse(site %in% c("Site A", "Site B", "Site C"),
                               "North", "South")) |>
@@ -362,6 +377,7 @@ knitr::include_graphics(save_fig(p, "six_steps"))
 ![Stress test: 6 steps, 2 groups.](six_steps.png)
 
 ``` r
+
 p <- df_many |>
   dplyr::mutate(site = ifelse(site %in% c("Site A", "Site B", "Site C"),
                               "Northern Region", "Southern Region")) |>
@@ -379,6 +395,7 @@ knitr::include_graphics(save_fig(p, "long_label"))
 ![Stress test: long step labels.](long_label.png)
 
 ``` r
+
 p <- df_many |>
   new_cohort("Screened", id_col = "id", group_col = "site") |>
   include_if(age >= 18, "Age >= 18 years") |>

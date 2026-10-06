@@ -19,6 +19,7 @@ examples](https://aasiyahrashan.github.io/GroupCONSORT/articles/getting-started.
 ## Installation
 
 ``` r
+
 # install.packages("devtools")
 devtools::install_github("aasiyahrashan/GroupCONSORT")
 ```
@@ -28,6 +29,7 @@ devtools::install_github("aasiyahrashan/GroupCONSORT")
 ## Quick start
 
 ``` r
+
 library(GroupCONSORT)
 
 # prep_cgd_example() ships with the package; uses survival::cgd
@@ -85,22 +87,23 @@ guessing `fig.width`.
 
 ## Core functions
 
-| Function                                                                                             | Purpose                                  |
-|------------------------------------------------------------------------------------------------------|------------------------------------------|
-| [`new_cohort()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/new_cohort.md)               | Start a cohort object from a data frame  |
-| [`include_if()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/include_if.md)               | Apply a filter step and record attrition |
-| [`get_tracker()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/get_tracker.md)             | Extract the attrition tibble             |
-| [`get_data()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/get_data.md)                   | Extract the filtered data frame          |
-| [`merge_trackers()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/merge_trackers.md)       | Combine trackers from separate datasets  |
-| [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md)           | Draw the flowchart                       |
-| [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md) | Save at content-fitting dimensions       |
-| [`prep_cgd_example()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/prep_cgd_example.md)   | Prepare the built-in CGD example dataset |
+| Function | Purpose |
+|----|----|
+| [`new_cohort()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/new_cohort.md) | Start a cohort object from a data frame |
+| [`include_if()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/include_if.md) | Apply a filter step and record attrition |
+| [`get_tracker()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/get_tracker.md) | Extract the attrition tibble |
+| [`get_data()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/get_data.md) | Extract the filtered data frame |
+| [`merge_trackers()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/merge_trackers.md) | Combine trackers from separate datasets |
+| [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md) | Draw the flowchart |
+| [`save_consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/save_consort_plot.md) | Save at content-fitting dimensions |
+| [`prep_cgd_example()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/prep_cgd_example.md) | Prepare the built-in CGD example dataset |
 
 ------------------------------------------------------------------------
 
 ## Inspecting attrition
 
 ``` r
+
 get_tracker(cohort)
 #> # A tibble: 10 × 4
 #>    group         step                    n_remaining n_dropped
@@ -116,6 +119,7 @@ get_tracker(cohort)
 ## Saving
 
 ``` r
+
 p <- consort_plot(cohort)
 save_consort_plot(p, "figures/consort", formats = c("png", "pdf"))
 ```
