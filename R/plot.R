@@ -242,18 +242,21 @@ paginate_consort <- function(tracker,
   }
 
   # Render each page by subsetting the (already recoded) tracker.
-  # Labels and na_cells are already baked in -- pass NULL to consort_plot()
-  # to avoid double-processing.
   pages <- lapply(seq_len(n_pages), function(p) {
     rng        <- page_ranges[[p]]
     page_steps <- steps[seq(rng[1], rng[2])]
     sub_tracker <- tracker[tracker$step %in% page_steps, , drop = FALSE]
     sub_tracker <- sub_tracker[order(match(sub_tracker$step, page_steps)), ]
 
+    # Pass this page's N/A cells and renamed steps on: consort_plot() would
+    # otherwise reset every cell to applicable and re-clean renamed labels.
+    page_na      <- sub_tracker[sub_tracker$is_na, c("step", "group"), drop = FALSE]
+    page_renamed <- intersect(page_steps, renamed_steps)
     grob <- consort_plot(
       tracker      = sub_tracker,
-      na_cells     = NULL,
-      step_labels  = NULL,
+      na_cells     = if (nrow(page_na) > 0) page_na else NULL,
+      step_labels  = if (length(page_renamed) > 0)
+                       stats::setNames(page_renamed, page_renamed) else NULL,
       group_labels = NULL,
       font_size    = font_size,
       box_width    = box_width,
