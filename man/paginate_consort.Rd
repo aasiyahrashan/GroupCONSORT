@@ -10,6 +10,7 @@ paginate_consort(
   na_cells = NULL,
   step_labels = NULL,
   group_labels = NULL,
+  exclusion_labels = NULL,
   font_size = 1,
   box_width = NULL,
   excl_width = NULL
@@ -21,7 +22,7 @@ paginate_consort(
 \item{page_height_mm}{Usable page height in mm. Default \code{257} (A4 with
 standard top/bottom margins). For US Letter use approximately \code{241}.}
 
-\item{na_cells, step_labels, group_labels, font_size, box_width, excl_width}{Passed through to \code{\link[=consort_plot]{consort_plot()}} for each page.}
+\item{na_cells, step_labels, group_labels, exclusion_labels, font_size, box_width, excl_width}{Passed through to \code{\link[=consort_plot]{consort_plot()}} for each page.}
 }
 \value{
 A list of \code{consort_grob} objects. Each element also carries a

@@ -133,3 +133,55 @@ test_that("save_consort_plot writes PNG file", {
   save_consort_plot(p, path, formats = "png")
   expect_true(file.exists(paste0(path, ".png")))
 })
+
+test_that("step names keep their acronyms' capitals", {
+  expect_equal(GroupCONSORT:::clean_label("Not transferred from another ICU"),
+               "Not transferred from another ICU")
+  expect_equal(GroupCONSORT:::clean_label("COVID primary diagnosis"),
+               "COVID primary diagnosis")
+  expect_equal(GroupCONSORT:::clean_label("02_age_over_18"), "Age over 18")
+})
+
+test_that("exclusion_labels add a reason line to that step's exclusion box", {
+  tr <- get_tracker(make_cohort())
+  ec <- GroupCONSORT:::build_excl_content(
+    GroupCONSORT:::flag_na_cells(tr, NULL), unique(tr$step), 3, 2,
+    c("Weight >= 15" = "Weight under 15")
+  )
+  expect_equal(ec[[1]]$reason_line, character(0))
+  expect_equal(ec[[2]]$reason_line, "Weight under 15")
+  expect_s3_class(
+    consort_plot(tr, exclusion_labels = c("Weight >= 15" = "Weight under 15")),
+    "consort_grob"
+  )
+})
+
+test_that("exclusion_labels follow step_labels renaming", {
+  ex <- GroupCONSORT:::recode_names(c("Age >= 10" = "Under 10"),
+                                    c("Age >= 10" = "Adult"))
+  expect_named(ex, "Adult")
+  expect_s3_class(
+    consort_plot(make_cohort(), step_labels = c("Age >= 10" = "Adult"),
+                 exclusion_labels = c("Age >= 10" = "Under 10")),
+    "consort_grob"
+  )
+})
+
+test_that("paginate_consort passes exclusion_labels to every page", {
+  pages <- paginate_consort(make_cohort(), page_height_mm = 80,
+                            exclusion_labels = c("Weight >= 15" = "Weight under 15"))
+  expect_length(pages, 2)
+  expect_true(all(vapply(pages, inherits, logical(1), "consort_grob")))
+})
+
+test_that("exclusion reasons wrap to a fixed exclusion box width", {
+  tr  <- get_tracker(make_cohort())
+  lay <- GroupCONSORT:::layout_params(1)
+  ec  <- GroupCONSORT:::build_excl_content(
+    GroupCONSORT:::flag_na_cells(tr, NULL), unique(tr$step), 3, 2,
+    c("Weight >= 15" = "Weight under fifteen kilograms at the screening visit")
+  )
+  wrapped <- GroupCONSORT:::wrap_and_measure_mm(ec, 30, lay)
+  expect_gt(length(wrapped[[2]]$reason_line), 1)
+  expect_equal(wrapped[[1]]$reason_line, NULL)
+})
