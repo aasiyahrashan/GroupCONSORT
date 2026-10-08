@@ -214,7 +214,7 @@ print.cohort <- function(x, ...) {
   n_start <- sum(dplyr::filter(tr, .data$step == steps[1])$n_remaining)
   n_end   <- sum(dplyr::filter(tr, .data$step == steps[length(steps)])$n_remaining)
   cat(sprintf(
-    "<cohort>  %d step%s | %d group%s\n  Start: n = %s  |  End: n = %s\n",
+    "<cohort>  %d step%s | %d group%s\n  Start: N = %s  |  End: N = %s\n",
     length(steps),  if (length(steps)  != 1) "s" else "",
     max(length(groups), 1), if (max(length(groups), 1) != 1) "s" else "",
     format(n_start, big.mark = ","),

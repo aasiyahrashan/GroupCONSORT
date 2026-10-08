@@ -17,7 +17,7 @@
 #' @param step_labels Named character vector renaming steps for display.
 #' @param group_labels Named character vector renaming groups for display.
 #' @param exclusion_labels Named character vector describing the patients each
-#'   step excluded, shown under "Excluded: n = ..." in that step's exclusion
+#'   step excluded, shown under "Excluded: N = ..." in that step's exclusion
 #'   box, e.g. `c("Not transferred from another ICU" = "Transferred from
 #'   another ICU")`. Names are tracker step names, before any `step_labels`
 #'   renaming. Steps without a label keep the plain exclusion box. `NULL`
@@ -447,13 +447,13 @@ build_main_content <- function(tracker, steps, n_groups,
     # via step_labels, to avoid clobbering user-supplied display names.
     title <- if (s %in% renamed_steps) s else clean_label(s)
     n_line <- if (n_groups > 1)
-      paste0("Total: n = ", format(total, big.mark = ","))
+      paste0("Total: N = ", format(total, big.mark = ","))
     else
-      paste0("n = ", format(total, big.mark = ","))
+      paste0("N = ", format(total, big.mark = ","))
     group_lines <- if (n_groups > 1)
       dplyr::mutate(rows, line = dplyr::case_when(
         is.na(.data$n_remaining) ~ paste0(.data$group, ": \u2014"),
-        TRUE ~ paste0(.data$group, ": n = ",
+        TRUE ~ paste0(.data$group, ": N = ",
                       format(.data$n_remaining, big.mark = ","))
       ))$line
     else character(0)
@@ -478,7 +478,7 @@ build_excl_content <- function(tracker, steps, n_steps, n_groups,
         tidyr::replace_na(.data$curr_n, 0L)
     )
     total_d <- sum(dplyr::filter(joined, !.data$is_na)$d, na.rm = TRUE)
-    title   <- paste0("Excluded: n = ", format(total_d, big.mark = ","))
+    title   <- paste0("Excluded: N = ", format(total_d, big.mark = ","))
     # Who this step excluded, if given (plain line under the title);
     # character(0) when not.
     reason_line <- as.character(stats::na.omit(unname(exclusion_labels[steps[i]])))
@@ -486,7 +486,7 @@ build_excl_content <- function(tracker, steps, n_steps, n_groups,
       dplyr::mutate(joined, line = dplyr::if_else(
         .data$is_na,
         paste0("  ", .data$group, ": N/A"),
-        paste0("  ", .data$group, ": n = ", format(.data$d, big.mark = ","))
+        paste0("  ", .data$group, ": N = ", format(.data$d, big.mark = ","))
       ))$line
     else character(0)
 

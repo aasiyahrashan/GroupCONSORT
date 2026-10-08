@@ -28,7 +28,7 @@ step-group combinations where the step did not apply (shown as "N/A").
 \item{group_labels}{Named character vector renaming groups for display.}
 
 \item{exclusion_labels}{Named character vector describing the patients each
-step excluded, shown under "Excluded: n = ..." in that step's exclusion
+step excluded, shown under "Excluded: N = ..." in that step's exclusion
 box, e.g. \code{c("Not transferred from another ICU" = "Transferred from another ICU")}. Names are tracker step names, before any \code{step_labels}
 renaming. Steps without a label keep the plain exclusion box. \code{NULL}
 (default) labels none.}
