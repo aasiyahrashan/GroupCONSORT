@@ -16,6 +16,12 @@
 #'   `NULL` (default) means no N/A cells.
 #' @param step_labels Named character vector renaming steps for display.
 #' @param group_labels Named character vector renaming groups for display.
+#' @param exclusion_labels Named character vector describing the patients each
+#'   step excluded, shown under "Excluded: N = ..." in that step's exclusion
+#'   box, e.g. `c("Not transferred from another ICU" = "Transferred from
+#'   another ICU")`. Names are tracker step names, before any `step_labels`
+#'   renaming. Steps without a label keep the plain exclusion box. `NULL`
+#'   (default) labels none.
 #' @param font_size Multiplicative scaling factor for all text. Default `1`.
 #' @param box_width Width of main boxes in mm. `NULL` = auto.
 #' @param excl_width Width of exclusion boxes in mm. `NULL` = auto.
@@ -27,6 +33,7 @@ consort_plot <- function(tracker,
                          na_cells     = NULL,
                          step_labels  = NULL,
                          group_labels = NULL,
+                         exclusion_labels = NULL,
                          font_size    = 1,
                          box_width    = NULL,
                          excl_width   = NULL) {
@@ -37,6 +44,7 @@ consort_plot <- function(tracker,
   renamed_steps <- if (!is.null(step_labels)) unname(step_labels) else character(0)
 
   tracker <- recode_tracker(tracker, step_labels, group_labels)
+  exclusion_labels <- recode_names(exclusion_labels, step_labels)
 
   steps    <- unique(tracker$step)
   n_steps  <- length(steps)
@@ -47,7 +55,7 @@ consort_plot <- function(tracker,
   lay     <- layout_params(font_size)
 
   mc <- build_main_content(tracker, steps, n_groups, renamed_steps)
-  ec <- build_excl_content(tracker, steps, n_steps, n_groups)
+  ec <- build_excl_content(tracker, steps, n_steps, n_groups, exclusion_labels)
 
   bw <- box_width  %||% auto_width_mm(mc, lay)
   ew <- excl_width %||% auto_width_mm(ec, lay)
@@ -147,7 +155,7 @@ save_consort_plot <- function(plot, path, formats = c("png", "pdf"),
 #' @param tracker A `cohort` object or tracker tibble (same as [consort_plot()]).
 #' @param page_height_mm Usable page height in mm. Default `257` (A4 with
 #'   standard top/bottom margins). For US Letter use approximately `241`.
-#' @param na_cells,step_labels,group_labels,font_size,box_width,excl_width
+#' @param na_cells,step_labels,group_labels,exclusion_labels,font_size,box_width,excl_width
 #'   Passed through to [consort_plot()] for each page.
 #'
 #' @return A list of `consort_grob` objects. Each element also carries a
@@ -165,6 +173,7 @@ paginate_consort <- function(tracker,
                              na_cells       = NULL,
                              step_labels    = NULL,
                              group_labels   = NULL,
+                             exclusion_labels = NULL,
                              font_size      = 1,
                              box_width      = NULL,
                              excl_width     = NULL) {
@@ -177,6 +186,7 @@ paginate_consort <- function(tracker,
   renamed_steps <- if (!is.null(step_labels)) unname(step_labels) else character(0)
   tracker <- recode_tracker(tracker, step_labels, group_labels)
   tracker <- flag_na_cells(tracker, na_cells)
+  exclusion_labels <- recode_names(exclusion_labels, step_labels)
 
   steps    <- unique(tracker$step)
   n_steps  <- length(steps)
@@ -187,7 +197,7 @@ paginate_consort <- function(tracker,
 
   # Build content for ALL steps to measure heights consistently.
   mc_all <- build_main_content(tracker, steps, n_groups, renamed_steps)
-  ec_all <- build_excl_content(tracker, steps, n_steps, n_groups)
+  ec_all <- build_excl_content(tracker, steps, n_steps, n_groups, exclusion_labels)
 
   bw <- box_width  %||% auto_width_mm(mc_all, lay)
   ew <- excl_width %||% auto_width_mm(ec_all, lay)
@@ -225,6 +235,10 @@ paginate_consort <- function(tracker,
            compute_page_h(seq(start, end + 1L)) <= page_content_h) {
       end <- end + 1L
     }
+    # A page holds at least two steps, even if they overflow the height
+    # budget: with one, the overlap below would start the next page on the
+    # same step and the loop would never end.
+    end <- max(end, min(start + 1L, n_steps))
     page_ranges[[length(page_ranges) + 1L]] <- c(start, end)
     if (end >= n_steps) break
     start <- end  # overlap: last step of this page = first of next
@@ -258,6 +272,7 @@ paginate_consort <- function(tracker,
       step_labels  = if (length(page_renamed) > 0)
                        stats::setNames(page_renamed, page_renamed) else NULL,
       group_labels = NULL,
+      exclusion_labels = exclusion_labels,
       font_size    = font_size,
       box_width    = box_width,
       excl_width   = excl_width
@@ -432,13 +447,13 @@ build_main_content <- function(tracker, steps, n_groups,
     # via step_labels, to avoid clobbering user-supplied display names.
     title <- if (s %in% renamed_steps) s else clean_label(s)
     n_line <- if (n_groups > 1)
-      paste0("Total: n = ", format(total, big.mark = ","))
+      paste0("Total: N = ", format(total, big.mark = ","))
     else
-      paste0("n = ", format(total, big.mark = ","))
+      paste0("N = ", format(total, big.mark = ","))
     group_lines <- if (n_groups > 1)
       dplyr::mutate(rows, line = dplyr::case_when(
         is.na(.data$n_remaining) ~ paste0(.data$group, ": \u2014"),
-        TRUE ~ paste0(.data$group, ": n = ",
+        TRUE ~ paste0(.data$group, ": N = ",
                       format(.data$n_remaining, big.mark = ","))
       ))$line
     else character(0)
@@ -448,7 +463,8 @@ build_main_content <- function(tracker, steps, n_groups,
   })
 }
 
-build_excl_content <- function(tracker, steps, n_steps, n_groups) {
+build_excl_content <- function(tracker, steps, n_steps, n_groups,
+                               exclusion_labels = NULL) {
   if (n_steps < 2) return(list())
   purrr::map(seq(2, n_steps), function(i) {
     prev <- dplyr::filter(tracker, .data$step == steps[i - 1])
@@ -462,17 +478,21 @@ build_excl_content <- function(tracker, steps, n_steps, n_groups) {
         tidyr::replace_na(.data$curr_n, 0L)
     )
     total_d <- sum(dplyr::filter(joined, !.data$is_na)$d, na.rm = TRUE)
-    title   <- paste0("Excluded: n = ", format(total_d, big.mark = ","))
+    title   <- paste0("Excluded: N = ", format(total_d, big.mark = ","))
+    # Who this step excluded, if given (plain line under the title);
+    # character(0) when not.
+    reason_line <- as.character(stats::na.omit(unname(exclusion_labels[steps[i]])))
     group_lines <- if (n_groups > 1)
       dplyr::mutate(joined, line = dplyr::if_else(
         .data$is_na,
         paste0("  ", .data$group, ": N/A"),
-        paste0("  ", .data$group, ": n = ", format(.data$d, big.mark = ","))
+        paste0("  ", .data$group, ": N = ", format(.data$d, big.mark = ","))
       ))$line
     else character(0)
 
-    list(title = title, n_line = NULL, group_lines = group_lines,
-         raw_lines = c(title, group_lines), type = "excl", step_idx = i)
+    list(title = title, reason_line = reason_line, n_line = NULL,
+         group_lines = group_lines,
+         raw_lines = c(title, reason_line, group_lines), type = "excl", step_idx = i)
   })
 }
 
@@ -486,6 +506,8 @@ auto_width_mm <- function(content_list, lay) {
   widths <- numeric(0)
   for (item in content_list) {
     widths <- c(widths, grob_width_mm(item$title,    "bold",  lay))
+    for (rl in item$reason_line)
+      widths <- c(widths, grob_width_mm(rl, "plain", lay))
     if (!is.null(item$n_line))
       widths <- c(widths, grob_width_mm(item$n_line, "bold",  lay))
     for (gl in item$group_lines)
@@ -519,6 +541,12 @@ wrap_and_measure_mm <- function(content_list, box_w_mm, lay) {
     }
     item$n_title_lines <- length(strsplit(item$title_wrapped, "\n",
                                           fixed = TRUE)[[1]])
+    # Exclusion reasons wrap the same way; a line that fits stays whole.
+    item$reason_line <- unlist(lapply(item$reason_line, function(rl) {
+      mpc <- grob_width_mm(rl, "plain", lay) / max(nchar(rl), 1L)
+      wrap_at <- max(floor(avail_mm / mpc), 6L)
+      strsplit(stringr::str_wrap(rl, width = wrap_at), "\n", fixed = TRUE)[[1]]
+    }))
     item$bh_mm <- box_height_mm(item, lay)
     item
   })
@@ -530,9 +558,9 @@ box_height_mm <- function(item, lay) {
     length(strsplit(item$title_wrapped %||% item$title, "\n",
                     fixed = TRUE)[[1]])
   has_body <- (!is.null(item$n_line) && nchar(item$n_line) > 0) ||
-    length(item$group_lines) > 0
+    length(item$group_lines) > 0 || length(item$reason_line) > 0
   n_body <- (if (!is.null(item$n_line) && nchar(item$n_line) > 0) 1L else 0L) +
-    length(item$group_lines)
+    length(item$reason_line) + length(item$group_lines)
   sg <- if (has_body) lay$section_gap_mm else 0
   n_title * lh + sg + n_body * lh + 2 * lay$pad_y_mm
 }
@@ -697,8 +725,16 @@ text_block_grob <- function(item, x_left, y_start, lay, n_groups) {
 
   # Section gap once, only when body follows
   has_body <- (!is.null(item$n_line) && nchar(item$n_line) > 0) ||
-    length(item$group_lines) > 0
+    length(item$group_lines) > 0 || length(item$reason_line) > 0
   if (has_body) cursor <- cursor - lay$section_gap_mm
+
+  # Exclusion reason (plain), exclusion boxes only
+  for (rl in item$reason_line) {
+    add(grid::textGrob(label = rl,
+                       x = u(x_left), y = u(cursor),
+                       just = c("left", "top"), gp = gp_plain))
+    cursor <- cursor - lh
+  }
 
   # n_line
   if (!is.null(item$n_line) && nchar(item$n_line) > 0) {
@@ -751,9 +787,19 @@ recode_tracker <- function(tracker, step_labels, group_labels) {
   tracker
 }
 
+# Rename the names of a named vector (e.g. exclusion_labels, keyed by step)
+# with the same lookup recode_tracker() applies to the steps.
+recode_names <- function(x, lookup) {
+  idx <- match(names(x), names(lookup))
+  names(x)[!is.na(idx)] <- unname(lookup[idx[!is.na(idx)]])
+  x
+}
+
+# Capitalise only the first letter, so acronyms in a step name (COVID, ICU)
+# keep their capitals.
 clean_label <- function(x) {
-  x |>
+  x <- x |>
     stringr::str_remove("^\\d+[_.\\-]\\s*") |>
-    stringr::str_replace_all("[_.]", " ") |>
-    stringr::str_to_sentence()
+    stringr::str_replace_all("[_.]", " ")
+  paste0(toupper(substr(x, 1, 1)), substring(x, 2))
 }
