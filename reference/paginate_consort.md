@@ -16,6 +16,7 @@ paginate_consort(
   na_cells = NULL,
   step_labels = NULL,
   group_labels = NULL,
+  exclusion_labels = NULL,
   font_size = 1,
   box_width = NULL,
   excl_width = NULL
@@ -34,7 +35,8 @@ paginate_consort(
   Usable page height in mm. Default `257` (A4 with standard top/bottom
   margins). For US Letter use approximately `241`.
 
-- na_cells, step_labels, group_labels, font_size, box_width, excl_width:
+- na_cells, step_labels, group_labels, exclusion_labels, font_size,
+  box_width, excl_width:
 
   Passed through to
   [`consort_plot()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/consort_plot.md)

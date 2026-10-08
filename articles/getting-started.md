@@ -53,7 +53,7 @@ cohort <- cgd |>
 
 cohort
 #> <cohort>  5 steps | 2 groups
-#>   Start: n = 128  |  End: n = 108
+#>   Start: N = 128  |  End: N = 108
 ```
 
 [`get_tracker()`](https://aasiyahrashan.github.io/GroupCONSORT/reference/get_tracker.md)

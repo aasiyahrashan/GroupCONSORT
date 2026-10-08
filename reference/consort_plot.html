@@ -47,6 +47,7 @@
 <span>  na_cells <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  step_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  group_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  exclusion_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  font_size <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  box_width <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  excl_width <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -74,6 +75,14 @@ step-group combinations where the step did not apply (shown as "N/A").
 
 <dt id="arg-group-labels">group_labels<a class="anchor" aria-label="anchor" href="#arg-group-labels"></a></dt>
 <dd><p>Named character vector renaming groups for display.</p></dd>
+
+
+<dt id="arg-exclusion-labels">exclusion_labels<a class="anchor" aria-label="anchor" href="#arg-exclusion-labels"></a></dt>
+<dd><p>Named character vector describing the patients each
+step excluded, shown under "Excluded: N = ..." in that step's exclusion
+box, e.g. <code>c("Not transferred from another ICU" = "Transferred from another ICU")</code>. Names are tracker step names, before any <code>step_labels</code>
+renaming. Steps without a label keep the plain exclusion box. <code>NULL</code>
+(default) labels none.</p></dd>
 
 
 <dt id="arg-font-size">font_size<a class="anchor" aria-label="anchor" href="#arg-font-size"></a></dt>

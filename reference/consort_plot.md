@@ -10,6 +10,7 @@ consort_plot(
   na_cells = NULL,
   step_labels = NULL,
   group_labels = NULL,
+  exclusion_labels = NULL,
   font_size = 1,
   box_width = NULL,
   excl_width = NULL
@@ -36,6 +37,15 @@ consort_plot(
 - group_labels:
 
   Named character vector renaming groups for display.
+
+- exclusion_labels:
+
+  Named character vector describing the patients each step excluded,
+  shown under "Excluded: N = ..." in that step's exclusion box, e.g.
+  `c("Not transferred from another ICU" = "Transferred from another ICU")`.
+  Names are tracker step names, before any `step_labels` renaming. Steps
+  without a label keep the plain exclusion box. `NULL` (default) labels
+  none.
 
 - font_size:
 
