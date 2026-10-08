@@ -185,3 +185,10 @@ test_that("exclusion reasons wrap to a fixed exclusion box width", {
   expect_gt(length(wrapped[[2]]$reason_line), 1)
   expect_equal(wrapped[[1]]$reason_line, NULL)
 })
+
+test_that("paginate_consort ends when only one step fits a page", {
+  pages <- suppressMessages(paginate_consort(make_cohort(), page_height_mm = 30))
+  steps <- lapply(pages, function(p) attr(p, ".page_info")$steps)
+  expect_true(all(lengths(steps) >= 2))
+  expect_equal(unique(unlist(steps)), unique(get_tracker(make_cohort())$step))
+})

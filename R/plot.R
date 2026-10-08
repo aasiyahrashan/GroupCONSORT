@@ -235,6 +235,10 @@ paginate_consort <- function(tracker,
            compute_page_h(seq(start, end + 1L)) <= page_content_h) {
       end <- end + 1L
     }
+    # A page holds at least two steps, even if they overflow the height
+    # budget: with one, the overlap below would start the next page on the
+    # same step and the loop would never end.
+    end <- max(end, min(start + 1L, n_steps))
     page_ranges[[length(page_ranges) + 1L]] <- c(start, end)
     if (end >= n_steps) break
     start <- end  # overlap: last step of this page = first of next
