@@ -453,8 +453,10 @@ build_main_content <- function(tracker, steps, n_groups,
     group_lines <- if (n_groups > 1)
       dplyr::mutate(rows, line = dplyr::case_when(
         is.na(.data$n_remaining) ~ paste0(.data$group, ": \u2014"),
+        # trim = TRUE: no padding to a common width, which left uneven gaps
+        # after "N =" in a proportional font
         TRUE ~ paste0(.data$group, ": N = ",
-                      format(.data$n_remaining, big.mark = ","))
+                      format(.data$n_remaining, big.mark = ",", trim = TRUE))
       ))$line
     else character(0)
 
@@ -486,7 +488,7 @@ build_excl_content <- function(tracker, steps, n_steps, n_groups,
       dplyr::mutate(joined, line = dplyr::if_else(
         .data$is_na,
         paste0("  ", .data$group, ": N/A"),
-        paste0("  ", .data$group, ": N = ", format(.data$d, big.mark = ","))
+        paste0("  ", .data$group, ": N = ", format(.data$d, big.mark = ",", trim = TRUE))
       ))$line
     else character(0)
 
