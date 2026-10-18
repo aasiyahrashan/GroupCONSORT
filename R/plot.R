@@ -454,7 +454,7 @@ build_main_content <- function(tracker, steps, n_groups,
       dplyr::mutate(rows, line = dplyr::case_when(
         is.na(.data$n_remaining) ~ paste0(.data$group, ": \u2014"),
         TRUE ~ paste0(.data$group, ": N = ",
-                      format(.data$n_remaining, big.mark = ","))
+                      format(.data$n_remaining, big.mark = ",", trim = TRUE))
       ))$line
     else character(0)
 
@@ -486,7 +486,7 @@ build_excl_content <- function(tracker, steps, n_steps, n_groups,
       dplyr::mutate(joined, line = dplyr::if_else(
         .data$is_na,
         paste0("  ", .data$group, ": N/A"),
-        paste0("  ", .data$group, ": N = ", format(.data$d, big.mark = ","))
+        paste0("  ", .data$group, ": N = ", format(.data$d, big.mark = ",", trim = TRUE))
       ))$line
     else character(0)
 
